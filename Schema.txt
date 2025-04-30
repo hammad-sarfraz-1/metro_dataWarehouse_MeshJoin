@@ -1,0 +1,135 @@
+---- Schema ----
+
+mysql> SHOW TABLES;
++-----------------------+
+| Tables_in_METRO_DW    |
++-----------------------+
+| STORE_QUARTERLY_SALES |
+| YEARLY_REVENUE_ROLLUP |
+| customers             |
+| customers_staging     |
+| products              |
+| products_staging      |
+| sales_fact            |
+| transactions_staging  |
++-----------------------+
+8 rows in set (0.01 sec)
+
+mysql> DESCRIBE sales_fact;
++---------------+---------------+------+-----+---------+-------+
+| Field         | Type          | Null | Key | Default | Extra |
++---------------+---------------+------+-----+---------+-------+
+| order_id      | int           | NO   | PRI | NULL    |       |
+| order_date    | date          | YES  |     | NULL    |       |
+| product_id    | int           | YES  | MUL | NULL    |       |
+| customer_id   | int           | YES  | MUL | NULL    |       |
+| quantity      | int           | YES  |     | NULL    |       |
+| total_sale    | decimal(10,2) | YES  |     | NULL    |       |
+| product_price | decimal(10,2) | YES  |     | NULL    |       |
++---------------+---------------+------+-----+---------+-------+
+7 rows in set (0.01 sec)
+
+mysql> DESCRIBE products;
++---------------+---------------+------+-----+---------+-------+
+| Field         | Type          | Null | Key | Default | Extra |
++---------------+---------------+------+-----+---------+-------+
+| product_id    | int           | NO   | PRI | NULL    |       |
+| product_name  | varchar(100)  | YES  |     | NULL    |       |
+| product_price | decimal(10,2) | YES  |     | NULL    |       |
+| supplier_id   | int           | YES  |     | NULL    |       |
+| supplier_name | varchar(100)  | YES  |     | NULL    |       |
+| store_id      | int           | YES  |     | NULL    |       |
+| store_name    | varchar(100)  | YES  |     | NULL    |       |
++---------------+---------------+------+-----+---------+-------+
+7 rows in set (0.01 sec)
+
+mysql> DESCRIBE customers;
++---------------+--------------+------+-----+---------+-------+
+| Field         | Type         | Null | Key | Default | Extra |
++---------------+--------------+------+-----+---------+-------+
+| customer_id   | int          | NO   | PRI | NULL    |       |
+| customer_name | varchar(100) | YES  |     | NULL    |       |
+| gender        | varchar(10)  | YES  |     | NULL    |       |
++---------------+--------------+------+-----+---------+-------+
+3 rows in set (0.01 sec)
+
+mysql> DESCRIBE transactions_staging;
++------------------+----------+------+-----+---------+-------+
+| Field            | Type     | Null | Key | Default | Extra |
++------------------+----------+------+-----+---------+-------+
+| order_id         | int      | YES  |     | NULL    |       |
+| order_date       | datetime | YES  |     | NULL    |       |
+| product_id       | int      | YES  |     | NULL    |       |
+| customer_id      | int      | YES  |     | NULL    |       |
+| quantity_ordered | int      | YES  |     | NULL    |       |
+| time_id          | int      | YES  |     | NULL    |       |
++------------------+----------+------+-----+---------+-------+
+6 rows in set (0.01 sec)
+
+mysql> DESCRIBE customers_staging;
++---------------+--------------+------+-----+---------+-------+
+| Field         | Type         | Null | Key | Default | Extra |
++---------------+--------------+------+-----+---------+-------+
+| customer_id   | int          | YES  |     | NULL    |       |
+| customer_name | varchar(100) | YES  |     | NULL    |       |
+| gender        | varchar(10)  | YES  |     | NULL    |       |
++---------------+--------------+------+-----+---------+-------+
+3 rows in set (0.01 sec)
+
+
+
+mysql> DESCRIBE products_staging;
++---------------+---------------+------+-----+---------+-------+
+| Field         | Type          | Null | Key | Default | Extra |
++---------------+---------------+------+-----+---------+-------+
+| product_id    | int           | YES  |     | NULL    |       |
+| product_name  | varchar(100)  | YES  |     | NULL    |       |
+| product_price | decimal(10,2) | YES  |     | NULL    |       |
+| supplier_id   | int           | YES  |     | NULL    |       |
+| supplier_name | varchar(100)  | YES  |     | NULL    |       |
+| store_id      | int           | YES  |     | NULL    |       |
+| store_name    | varchar(100)  | YES  |     | NULL    |       |
++---------------+---------------+------+-----+---------+-------+
+7 rows in set (0.02 sec)
+
+
+mysql> SELECT 
+    ->     TABLE_NAME, 
+    ->     COLUMN_NAME, 
+    ->     CONSTRAINT_NAME, 
+    ->     REFERENCED_TABLE_NAME, 
+    ->     REFERENCED_COLUMN_NAME 
+    -> FROM 
+    ->     INFORMATION_SCHEMA.KEY_COLUMN_USAGE 
+    -> WHERE 
+    ->     TABLE_NAME = 'sales_fact';
++------------+-------------+-------------------+-----------------------+------------------------+
+| TABLE_NAME | COLUMN_NAME | CONSTRAINT_NAME   | REFERENCED_TABLE_NAME | REFERENCED_COLUMN_NAME |
++------------+-------------+-------------------+-----------------------+------------------------+
+| sales_fact | order_id    | PRIMARY           | NULL                  | NULL                   |
+| sales_fact | product_id  | sales_fact_ibfk_1 | products              | product_id             |
+| sales_fact | customer_id | sales_fact_ibfk_2 | customers             | customer_id            |
++------------+-------------+-------------------+-----------------------+------------------------+
+3 rows in set (0.03 sec)
+
+
+
+
+mysql> SELECT 
+    ->     TABLE_NAME, 
+    ->     COLUMN_NAME, 
+    ->     CONSTRAINT_NAME, 
+    ->     REFERENCED_TABLE_NAME, 
+    ->     REFERENCED_COLUMN_NAME 
+    -> FROM 
+    ->     INFORMATION_SCHEMA.KEY_COLUMN_USAGE 
+    -> WHERE 
+    ->     REFERENCED_TABLE_NAME IS NOT NULL;
++------------+-------------+-------------------+-----------------------+------------------------+
+| TABLE_NAME | COLUMN_NAME | CONSTRAINT_NAME   | REFERENCED_TABLE_NAME | REFERENCED_COLUMN_NAME |
++------------+-------------+-------------------+-----------------------+------------------------+
+| sales_fact | product_id  | sales_fact_ibfk_1 | products              | product_id             |
+| sales_fact | customer_id | sales_fact_ibfk_2 | customers             | customer_id            |
++------------+-------------+-------------------+-----------------------+------------------------+
+2 rows in set (0.04 sec)
+

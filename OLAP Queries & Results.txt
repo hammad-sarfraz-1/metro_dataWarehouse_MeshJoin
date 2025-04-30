@@ -1,0 +1,1381 @@
+-- OLAP Queries ---
+
+Q1.
+mysql> 
+	SELECT 
+         p.product_name,
+         CASE 
+             WHEN DAYOFWEEK(sf.order_date) IN (1, 7) THEN 'Weekend'
+             ELSE 'Weekday'
+         END AS day_type,
+         MONTH(sf.order_date) AS month,
+         SUM(sf.total_sale) AS total_revenue
+     FROM 
+         sales_fact sf
+     JOIN 
+         products p ON sf.product_id = p.product_id
+     WHERE 
+         YEAR(sf.order_date) = 2019
+     GROUP BY 
+         p.product_name, day_type, MONTH(sf.order_date)
+     ORDER BY 
+         total_revenue DESC
+     LIMIT 5;
++-------------------------------------+----------+-------+---------------+
+| product_name                        | day_type | month | total_revenue |
++-------------------------------------+----------+-------+---------------+
+| Canon EOS-1D X Mark III DSLR Camera | Weekday  |     4 |    1104998.30 |
+| Canon EOS-1D X Mark III DSLR Camera | Weekday  |     8 |     643499.01 |
+| Canon EOS R5 Mirrorless Camera      | Weekday  |     4 |     559998.40 |
+| Nikon D850 DSLR Camera              | Weekday  |     4 |     416998.61 |
+| LG C1 OLED 4K TV                    | Weekday  |     4 |     403198.56 |
++-------------------------------------+----------+-------+---------------+
+5 rows in set (0.20 sec)
+
+
+
+Q2. 
+mysql> SELECT 
+         p.store_name,
+         QUARTER(sf.order_date) AS quarter,
+         SUM(sf.total_sale) AS quarterly_sales,
+         ROUND(
+             (SUM(sf.total_sale) - LAG(SUM(sf.total_sale)) OVER (PARTITION BY p.store_name ORDER BY QUARTER(sf.order_date))) / 
+             LAG(SUM(sf.total_sale)) OVER (PARTITION BY p.store_name ORDER BY QUARTER(sf.order_date)) * 100, 
+             2
+         ) AS growth_rate
+     FROM 
+         sales_fact sf
+     JOIN 
+         products p ON sf.product_id = p.product_id
+     WHERE 
+         YEAR(sf.order_date) = 2017
+     GROUP BY 
+         p.store_name, QUARTER(sf.order_date)
+     ORDER BY 
+         p.store_name, quarter;
+Empty set (0.03 sec)
+
+Q3.
+
+mysql> SELECT 
+         p.store_name,
+         p.supplier_name,
+         p.product_name,
+         SUM(sf.total_sale) AS total_sales
+     FROM 
+         sales_fact sf
+     JOIN 
+         products p ON sf.product_id = p.product_id
+     GROUP BY 
+         p.store_name, p.supplier_name, p.product_name
+     ORDER BY 
+         p.store_name, p.supplier_name, p.product_name;
++--------------+--------------------------------+--------------------------------------------------------+-------------+
+| store_name   | supplier_name                  | product_name                                           | total_sales |
++--------------+--------------------------------+--------------------------------------------------------+-------------+
+| Electro Mart | Amazon.com Inc.                | Amazon Echo Show 10 (3rd Gen)                          |    87746.49 |
+| Electro Mart | Apple Inc.                     | iPhone 13 Pro                                          |   347596.84 |
+| Electro Mart | Google LLC                     | Google Nest Hub (2nd Gen)                              |    35596.44 |
+| Electro Mart | Google LLC                     | Google Pixel 6                                         |   233096.67 |
+| Electro Mart | LG Electronics                 | LG C1 OLED 4K TV                                       |   940796.64 |
+| Electro Mart | LG Electronics                 | LG OLED C1 4K TV                                       |   817496.73 |
+| Electro Mart | OnePlus Technology             | OnePlus 9 Pro                                          |   350096.11 |
+| Electro Mart | OnePlus Technology             | OnePlus Nord 2                                         |   172996.54 |
+| Electro Mart | Ring (Amazon)                  | Ring Video Doorbell Pro 2                              |    79996.80 |
+| Electro Mart | Roku Inc.                      | Roku Ultra 4K Streaming Player                         |    30796.92 |
+| Electro Mart | Samsung Electronics            | Samsung QLED 4K Smart TV                               |   506996.62 |
+| Electro Mart | Sony Corporation               | Sony Xperia 1 III                                      |   445896.57 |
+| Game Zone    | Acer Inc.                      | Acer Predator X34 Curved Gaming Monitor                |   331996.68 |
+| Game Zone    | Acer Inc.                      | Acer Predator XB271HU Gaming Monitor                   |   194996.75 |
+| Game Zone    | Alienware (Dell)               | Alienware AW2521HFL Gaming Monitor                     |   172496.55 |
+| Game Zone    | Alienware (Dell)               | Dell Alienware AW3420DW Curved Gaming Monitor          |   428396.43 |
+| Game Zone    | AOC International              | AOC CQ32G1 Curved Gaming Monitor                       |   129146.31 |
+| Game Zone    | ASUS                           | ASUS ROG Swift PG279Q Gaming Monitor                   |   236596.62 |
+| Game Zone    | ASUS                           | ASUS TUF Gaming VG279QM Monitor                        |   108146.91 |
+| Game Zone    | Corsair                        | Corsair K95 RGB Platinum XT Mechanical Gaming Keyboard |    68396.58 |
+| Game Zone    | Corsair                        | Corsair Virtuoso RGB Wireless Gaming Headset           |    62996.50 |
+| Game Zone    | HyperX (Kingston Technology)   | HyperX Alloy FPS Pro Mechanical Gaming Keyboard        |    22396.80 |
+| Game Zone    | HyperX (Kingston Technology)   | HyperX Cloud II Gaming Headset                         |    34896.51 |
+| Game Zone    | LG Electronics                 | LG UltraGear 27GN950-B Gaming Monitor                  |   475496.83 |
+| Game Zone    | Logitech                       | Logitech G Pro X Mechanical Gaming Keyboard            |    53546.43 |
+| Game Zone    | Logitech                       | Logitech G502 HERO Gaming Mouse                        |    27436.57 |
+| Game Zone    | Microsoft Corporation          | Xbox Series X                                          |   159496.81 |
+| Game Zone    | MSI (Micro-Star International) | MSI Optix MAG271CQR Curved Gaming Monitor              |   134396.64 |
+| Game Zone    | MSI (Micro-Star International) | MSI Optix MAG321CQR Curved Gaming Monitor              |   157996.84 |
+| Game Zone    | Razer Inc.                     | Razer Naga X Gaming Mouse                              |    27516.56 |
+| Game Zone    | ROCCAT (Turtle Beach)          | ROCCAT Vulcan Pro Mechanical Gaming Keyboard           |    64996.75 |
+| Game Zone    | Samsung Electronics            | Samsung Odyssey G7 Gaming Monitor                      |   231696.69 |
+| Game Zone    | SteelSeries                    | SteelSeries Arctis Pro Wireless Gaming Headset         |   118796.40 |
+| Health Zone  | Apple Inc.                     | Apple Watch SE                                         |    95476.59 |
+| Health Zone  | Apple Inc.                     | Apple Watch Series 7                                   |   123996.90 |
+| Health Zone  | Fitbit Inc.                    | Fitbit Charge 5                                        |    56156.88 |
+| Health Zone  | Fitbit Inc.                    | Fitbit Versa 3 Smartwatch                              |    83716.36 |
+| Health Zone  | Garmin Ltd.                    | Garmin Forerunner 945 GPS Smartwatch                   |   196796.72 |
+| Health Zone  | Garmin Ltd.                    | Garmin Instinct Solar Smartwatch                       |   137196.57 |
+| Health Zone  | Garmin Ltd.                    | Garmin Venu 2 Smartwatch                               |   123596.91 |
+| Health Zone  | Samsung Electronics            | Samsung Galaxy Watch 4 Classic                         |   116196.68 |
+| InnoTech     | Acer Inc.                      | Acer Predator Helios 300 Gaming Laptop                 |   376796.86 |
+| InnoTech     | Alienware (Dell)               | Alienware Aurora Gaming PC                             |   570596.83 |
+| InnoTech     | Dell Technologies              | Dell G5 Gaming Desktop                                 |   395196.96 |
+| InnoTech     | HP Inc.                        | HP Omen 15 Gaming Laptop                               |   438096.63 |
+| InnoTech     | Lenovo Group                   | Lenovo Legion 5 Gaming Laptop                          |   348996.51 |
+| InnoTech     | MSI (Micro-Star International) | MSI GS66 Stealth Gaming Laptop                         |   731996.34 |
+| InnoTech     | NVIDIA Corporation             | NVIDIA GeForce RTX 3080 Graphics Card                  |   247096.47 |
+| InnoTech     | Razer Inc.                     | Razer Blade 15 Gaming Laptop                           |   647996.40 |
+| Pakistan     | Pakistan                       | Red Tomatoes                                           |   683996.40 |
+| Photo World  | Canon Inc.                     | Canon EOS 90D DSLR Camera                              |   337197.19 |
+| Photo World  | Canon Inc.                     | Canon EOS M50 Mark II Mirrorless Camera                |   199546.93 |
+| Photo World  | Canon Inc.                     | Canon EOS R5 Mirrorless Camera                         |  1266996.38 |
+| Photo World  | Canon Inc.                     | Canon EOS RP Mirrorless Camera                         |   413396.82 |
+| Photo World  | Canon Inc.                     | Canon EOS-1D X Mark III DSLR Camera                    |  2333496.41 |
+| Photo World  | DJI                            | DJI Mavic Air 2 Drone                                  |   311196.11 |
+| Photo World  | DJI                            | DJI Osmo Pocket 2                                      |   118646.61 |
+| Photo World  | Fujifilm Holdings Corporation  | Fujifilm X-T4 Mirrorless Camera                        |   506996.62 |
+| Photo World  | Fujifilm Holdings Corporation  | Fujifilm X100V Compact Camera                          |   412997.05 |
+| Photo World  | GoPro Inc.                     | GoPro HERO10 Black Action Camera                       |   168996.62 |
+| Photo World  | GoPro Inc.                     | GoPro HERO9 Black Action Camera                        |   156146.53 |
+| Photo World  | Nikon Corporation              | Nikon D850 DSLR Camera                                 |   932996.89 |
+| Photo World  | Nikon Corporation              | Nikon Z6 Mirrorless Camera                             |   617996.91 |
+| Photo World  | Sony Corporation               | Sony A7 III Mirrorless Camera                          |   617996.91 |
+| Photo World  | Sony Corporation               | Sony Alpha 7C Mirrorless Camera                        |   680396.22 |
+| Sound Zone   | Anker Innovations              | Anker Soundcore Flare+ Portable Speaker                |    37596.24 |
+| Sound Zone   | Anker Innovations              | Anker Soundcore Liberty Air 2 Pro Earbuds              |    44066.61 |
+| Sound Zone   | Apple Inc.                     | AirPods Pro                                            |    84996.60 |
+| Sound Zone   | Apple Inc.                     | Apple AirPods (3rd generation)                         |    61196.60 |
+| Sound Zone   | Apple Inc.                     | Apple AirPods Max                                      |   178196.76 |
+| Sound Zone   | Apple Inc.                     | Apple HomePod Mini                                     |    34196.58 |
+| Sound Zone   | Beats by Dre (Apple Inc.)      | Beats Powerbeats Pro Wireless Earphones                |    90996.36 |
+| Sound Zone   | Bose Corporation               | Bose QuietComfort 35 II Wireless Headphones            |   118196.06 |
+| Sound Zone   | Bose Corporation               | Bose SoundLink Revolve+ Bluetooth Speaker              |    99296.69 |
+| Sound Zone   | Google LLC                     | Google Nest Audio Smart Speaker                        |    33296.67 |
+| Sound Zone   | Google LLC                     | Google Pixel Buds A-Series                             |    32496.75 |
+| Sound Zone   | Jabra                          | Jabra Elite 75t True Wireless Earbuds                  |    45296.98 |
+| Sound Zone   | Jabra                          | Jabra Elite 85t True Wireless Earbuds                  |    75666.71 |
+| Sound Zone   | JBL                            | JBL Charge 4 Portable Bluetooth Speaker                |    46946.87 |
+| Sound Zone   | JBL                            | JBL Flip 5 Portable Bluetooth Speaker                  |    32696.73 |
+| Sound Zone   | OnePlus Technology             | OnePlus Buds Pro                                       |    48596.76 |
+| Sound Zone   | Samsung Electronics            | Samsung Galaxy Buds Pro                                |    70396.48 |
+| Sound Zone   | Sennheiser                     | Sennheiser HD 660 S Open-Back Headphones               |   185496.29 |
+| Sound Zone   | Sonos Inc.                     | Sonos Roam Portable Bluetooth Speaker                  |    60856.42 |
+| Sound Zone   | Sony Corporation               | Sony WH-1000XM4 Headphones                             |   134746.15 |
+| Sound Zone   | Ultimate Ears (Logitech)       | UE Megaboom 3 Portable Bluetooth Speaker               |    68796.56 |
+| Tech Haven   | Acer Inc.                      | Acer Aspire 5 Laptop                                   |   187546.59 |
+| Tech Haven   | Apple Inc.                     | Apple iPad Pro (12.9-inch)                             |   338796.92 |
+| Tech Haven   | Apple Inc.                     | iPad Air                                               |   207596.54 |
+| Tech Haven   | Apple Inc.                     | MacBook Air M2                                         |   385196.79 |
+| Tech Haven   | Apple Inc.                     | MacBook Pro M2                                         |   639996.80 |
+| Tech Haven   | Dell Technologies              | Dell Inspiron 14 Laptop                                |   244796.94 |
+| Tech Haven   | Dell Technologies              | Dell XPS 13 Laptop                                     |   400396.92 |
+| Tech Haven   | HP Inc.                        | HP Pavilion 27xw Monitor                               |    82746.69 |
+| Tech Haven   | HP Inc.                        | HP Spectre x360 Laptop                                 |   464796.68 |
+| Tech Haven   | Lenovo Group                   | Lenovo ThinkPad X1 Carbon Gen 9 Laptop                 |   644096.61 |
+| Tech Haven   | Lenovo Group                   | Lenovo Yoga C930 2-in-1 Laptop                         |   394796.71 |
+| Tech Haven   | Logitech                       | Logitech MX Master 3 Wireless Mouse                    |    34896.51 |
+| Tech Haven   | Microsoft Corporation          | Microsoft Surface Laptop 4                             |   408196.86 |
+| Tech Haven   | Microsoft Corporation          | Microsoft Surface Pro 7                                |   303196.21 |
+| Tech Haven   | Samsung Electronics            | Samsung Galaxy Tab S7                                  |   226846.51 |
++--------------+--------------------------------+--------------------------------------------------------+-------------+
+101 rows in set (0.19 sec)
+
+
+Q4.
+sql> SELECT 
+         p.product_name,
+         CASE 
+             WHEN MONTH(sf.order_date) IN (3, 4, 5) THEN 'Spring'
+             WHEN MONTH(sf.order_date) IN (6, 7, 8) THEN 'Summer'
+             WHEN MONTH(sf.order_date) IN (9, 10, 11) THEN 'Fall'
+    	 WHEN MONTH(sf.order_date) IN (1, 2, 3) THEN 'Winter'
+ 
+         END AS season,
+         SUM(sf.total_sale) AS total_sales
+     FROM 
+         sales_fact sf
+     JOIN 
+         products p ON sf.product_id = p.product_id
+     GROUP BY 
+         p.product_name, season
+     ORDER BY 
+       p.product_name, season;
++--------------------------------------------------------+--------+-------------+
+| product_name                                           | season | total_sales |
++--------------------------------------------------------+--------+-------------+
+| Acer Aspire 5 Laptop                                   | Spring |   110547.99 |
+| Acer Aspire 5 Laptop                                   | Summer |    76998.60 |
+| Acer Predator Helios 300 Gaming Laptop                 | Fall   |     1199.99 |
+| Acer Predator Helios 300 Gaming Laptop                 | Spring |   230398.08 |
+| Acer Predator Helios 300 Gaming Laptop                 | Summer |   145198.79 |
+| Acer Predator X34 Curved Gaming Monitor                | Spring |   213997.86 |
+| Acer Predator X34 Curved Gaming Monitor                | Summer |   117998.82 |
+| Acer Predator XB271HU Gaming Monitor                   | Spring |   119398.01 |
+| Acer Predator XB271HU Gaming Monitor                   | Summer |    75598.74 |
+| AirPods Pro                                            | Spring |    51247.95 |
+| AirPods Pro                                            | Summer |    33748.65 |
+| Alienware Aurora Gaming PC                             | Spring |   307798.29 |
+| Alienware Aurora Gaming PC                             | Summer |   262798.54 |
+| Alienware AW2521HFL Gaming Monitor                     | Spring |   104997.90 |
+| Alienware AW2521HFL Gaming Monitor                     | Summer |    67498.65 |
+| Amazon Echo Show 10 (3rd Gen)                          | Fall   |      249.99 |
+| Amazon Echo Show 10 (3rd Gen)                          | Spring |    50747.97 |
+| Amazon Echo Show 10 (3rd Gen)                          | Summer |    36748.53 |
+| Anker Soundcore Flare+ Portable Speaker                | Spring |    20797.92 |
+| Anker Soundcore Flare+ Portable Speaker                | Summer |    16798.32 |
+| Anker Soundcore Liberty Air 2 Pro Earbuds              | Spring |    28467.81 |
+| Anker Soundcore Liberty Air 2 Pro Earbuds              | Summer |    15598.80 |
+| AOC CQ32G1 Curved Gaming Monitor                       | Spring |    78747.75 |
+| AOC CQ32G1 Curved Gaming Monitor                       | Summer |    50398.56 |
+| Apple AirPods (3rd generation)                         | Spring |    36177.99 |
+| Apple AirPods (3rd generation)                         | Summer |    25018.61 |
+| Apple AirPods Max                                      | Spring |   111647.97 |
+| Apple AirPods Max                                      | Summer |    66548.79 |
+| Apple HomePod Mini                                     | Spring |    20997.90 |
+| Apple HomePod Mini                                     | Summer |    13198.68 |
+| Apple iPad Pro (12.9-inch)                             | Spring |   204598.14 |
+| Apple iPad Pro (12.9-inch)                             | Summer |   134198.78 |
+| Apple Watch SE                                         | Fall   |      279.99 |
+| Apple Watch SE                                         | Spring |    51798.15 |
+| Apple Watch SE                                         | Summer |    43398.45 |
+| Apple Watch Series 7                                   | Spring |    71998.20 |
+| Apple Watch Series 7                                   | Summer |    51998.70 |
+| ASUS ROG Swift PG279Q Gaming Monitor                   | Spring |   133698.09 |
+| ASUS ROG Swift PG279Q Gaming Monitor                   | Summer |   102898.53 |
+| ASUS TUF Gaming VG279QM Monitor                        | Spring |    63698.18 |
+| ASUS TUF Gaming VG279QM Monitor                        | Summer |    44448.73 |
+| Beats Powerbeats Pro Wireless Earphones                | Spring |    55247.79 |
+| Beats Powerbeats Pro Wireless Earphones                | Summer |    35748.57 |
+| Bose QuietComfort 35 II Wireless Headphones            | Spring |    68697.71 |
+| Bose QuietComfort 35 II Wireless Headphones            | Summer |    49498.35 |
+| Bose SoundLink Revolve+ Bluetooth Speaker              | Spring |    62697.91 |
+| Bose SoundLink Revolve+ Bluetooth Speaker              | Summer |    36598.78 |
+| Canon EOS 90D DSLR Camera                              | Spring |   209998.25 |
+| Canon EOS 90D DSLR Camera                              | Summer |   127198.94 |
+| Canon EOS M50 Mark II Mirrorless Camera                | Spring |   115048.23 |
+| Canon EOS M50 Mark II Mirrorless Camera                | Summer |    84498.70 |
+| Canon EOS R5 Mirrorless Camera                         | Spring |   787497.75 |
+| Canon EOS R5 Mirrorless Camera                         | Summer |   479498.63 |
+| Canon EOS RP Mirrorless Camera                         | Spring |   248298.09 |
+| Canon EOS RP Mirrorless Camera                         | Summer |   165098.73 |
+| Canon EOS-1D X Mark III DSLR Camera                    | Spring |  1475497.73 |
+| Canon EOS-1D X Mark III DSLR Camera                    | Summer |   857998.68 |
+| Corsair K95 RGB Platinum XT Mechanical Gaming Keyboard | Fall   |      199.99 |
+| Corsair K95 RGB Platinum XT Mechanical Gaming Keyboard | Spring |    39398.03 |
+| Corsair K95 RGB Platinum XT Mechanical Gaming Keyboard | Summer |    28798.56 |
+| Corsair Virtuoso RGB Wireless Gaming Headset           | Spring |    38877.84 |
+| Corsair Virtuoso RGB Wireless Gaming Headset           | Summer |    24118.66 |
+| Dell Alienware AW3420DW Curved Gaming Monitor          | Spring |   243597.97 |
+| Dell Alienware AW3420DW Curved Gaming Monitor          | Summer |   184798.46 |
+| Dell G5 Gaming Desktop                                 | Spring |   231398.22 |
+| Dell G5 Gaming Desktop                                 | Summer |   163798.74 |
+| Dell Inspiron 14 Laptop                                | Fall   |     1599.98 |
+| Dell Inspiron 14 Laptop                                | Spring |   155198.06 |
+| Dell Inspiron 14 Laptop                                | Summer |    87998.90 |
+| Dell XPS 13 Laptop                                     | Spring |   271697.91 |
+| Dell XPS 13 Laptop                                     | Summer |   128699.01 |
+| DJI Mavic Air 2 Drone                                  | Spring |   184797.69 |
+| DJI Mavic Air 2 Drone                                  | Summer |   126398.42 |
+| DJI Osmo Pocket 2                                      | Spring |    73147.91 |
+| DJI Osmo Pocket 2                                      | Summer |    45498.70 |
+| Fitbit Charge 5                                        | Spring |    34558.08 |
+| Fitbit Charge 5                                        | Summer |    21598.80 |
+| Fitbit Versa 3 Smartwatch                              | Spring |    51977.74 |
+| Fitbit Versa 3 Smartwatch                              | Summer |    31738.62 |
+| Fujifilm X-T4 Mirrorless Camera                        | Spring |   319497.87 |
+| Fujifilm X-T4 Mirrorless Camera                        | Summer |   187498.75 |
+| Fujifilm X100V Compact Camera                          | Spring |   247798.23 |
+| Fujifilm X100V Compact Camera                          | Summer |   165198.82 |
+| Garmin Forerunner 945 GPS Smartwatch                   | Spring |   122997.95 |
+| Garmin Forerunner 945 GPS Smartwatch                   | Summer |    73798.77 |
+| Garmin Instinct Solar Smartwatch                       | Fall   |      399.99 |
+| Garmin Instinct Solar Smartwatch                       | Spring |    85997.85 |
+| Garmin Instinct Solar Smartwatch                       | Summer |    50798.73 |
+| Garmin Venu 2 Smartwatch                               | Spring |    75198.12 |
+| Garmin Venu 2 Smartwatch                               | Summer |    48398.79 |
+| Google Nest Audio Smart Speaker                        | Spring |    21697.83 |
+| Google Nest Audio Smart Speaker                        | Summer |    11598.84 |
+| Google Nest Hub (2nd Gen)                              | Spring |    22497.75 |
+| Google Nest Hub (2nd Gen)                              | Summer |    13098.69 |
+| Google Pixel 6                                         | Spring |   131598.12 |
+| Google Pixel 6                                         | Summer |   101498.55 |
+| Google Pixel Buds A-Series                             | Spring |    17798.22 |
+| Google Pixel Buds A-Series                             | Summer |    14698.53 |
+| GoPro HERO10 Black Action Camera                       | Fall   |      499.99 |
+| GoPro HERO10 Black Action Camera                       | Spring |   108997.82 |
+| GoPro HERO10 Black Action Camera                       | Summer |    59498.81 |
+| GoPro HERO9 Black Action Camera                        | Spring |   105297.66 |
+| GoPro HERO9 Black Action Camera                        | Summer |    50848.87 |
+| HP Omen 15 Gaming Laptop                               | Spring |   265197.96 |
+| HP Omen 15 Gaming Laptop                               | Summer |   172898.67 |
+| HP Pavilion 27xw Monitor                               | Spring |    52747.89 |
+| HP Pavilion 27xw Monitor                               | Summer |    29998.80 |
+| HP Spectre x360 Laptop                                 | Spring |   286997.95 |
+| HP Spectre x360 Laptop                                 | Summer |   177798.73 |
+| HyperX Alloy FPS Pro Mechanical Gaming Keyboard        | Spring |    13648.05 |
+| HyperX Alloy FPS Pro Mechanical Gaming Keyboard        | Summer |     8748.75 |
+| HyperX Cloud II Gaming Headset                         | Spring |    19898.01 |
+| HyperX Cloud II Gaming Headset                         | Summer |    14998.50 |
+| iPad Air                                               | Spring |   119398.01 |
+| iPad Air                                               | Summer |    88198.53 |
+| iPhone 13 Pro                                          | Spring |   201298.17 |
+| iPhone 13 Pro                                          | Summer |   146298.67 |
+| Jabra Elite 75t True Wireless Earbuds                  | Spring |    26398.24 |
+| Jabra Elite 75t True Wireless Earbuds                  | Summer |    18898.74 |
+| Jabra Elite 85t True Wireless Earbuds                  | Spring |    43468.11 |
+| Jabra Elite 85t True Wireless Earbuds                  | Summer |    32198.60 |
+| JBL Charge 4 Portable Bluetooth Speaker                | Spring |    27598.16 |
+| JBL Charge 4 Portable Bluetooth Speaker                | Summer |    19348.71 |
+| JBL Flip 5 Portable Bluetooth Speaker                  | Spring |    18498.15 |
+| JBL Flip 5 Portable Bluetooth Speaker                  | Summer |    14198.58 |
+| Lenovo Legion 5 Gaming Laptop                          | Spring |   212997.87 |
+| Lenovo Legion 5 Gaming Laptop                          | Summer |   135998.64 |
+| Lenovo ThinkPad X1 Carbon Gen 9 Laptop                 | Spring |   406597.86 |
+| Lenovo ThinkPad X1 Carbon Gen 9 Laptop                 | Summer |   237498.75 |
+| Lenovo Yoga C930 2-in-1 Laptop                         | Spring |   215998.20 |
+| Lenovo Yoga C930 2-in-1 Laptop                         | Summer |   178798.51 |
+| LG C1 OLED 4K TV                                       | Spring |   534798.09 |
+| LG C1 OLED 4K TV                                       | Summer |   405998.55 |
+| LG OLED C1 4K TV                                       | Spring |   517497.93 |
+| LG OLED C1 4K TV                                       | Summer |   299998.80 |
+| LG UltraGear 27GN950-B Gaming Monitor                  | Spring |   283498.11 |
+| LG UltraGear 27GN950-B Gaming Monitor                  | Summer |   191998.72 |
+| Logitech G Pro X Mechanical Gaming Keyboard            | Spring |    32097.86 |
+| Logitech G Pro X Mechanical Gaming Keyboard            | Summer |    21448.57 |
+| Logitech G502 HERO Gaming Mouse                        | Fall   |       79.99 |
+| Logitech G502 HERO Gaming Mouse                        | Spring |    17037.87 |
+| Logitech G502 HERO Gaming Mouse                        | Summer |    10318.71 |
+| Logitech MX Master 3 Wireless Mouse                    | Spring |    21797.82 |
+| Logitech MX Master 3 Wireless Mouse                    | Summer |    13098.69 |
+| MacBook Air M2                                         | Spring |   212398.23 |
+| MacBook Air M2                                         | Summer |   172798.56 |
+| MacBook Pro M2                                         | Spring |   381998.09 |
+| MacBook Pro M2                                         | Summer |   257998.71 |
+| Microsoft Surface Laptop 4                             | Fall   |     2599.98 |
+| Microsoft Surface Laptop 4                             | Spring |   244398.12 |
+| Microsoft Surface Laptop 4                             | Summer |   161198.76 |
+| Microsoft Surface Pro 7                                | Spring |   187197.66 |
+| Microsoft Surface Pro 7                                | Summer |   115998.55 |
+| MSI GS66 Stealth Gaming Laptop                         | Spring |   459997.70 |
+| MSI GS66 Stealth Gaming Laptop                         | Summer |   271998.64 |
+| MSI Optix MAG271CQR Curved Gaming Monitor              | Spring |    83597.91 |
+| MSI Optix MAG271CQR Curved Gaming Monitor              | Summer |    50798.73 |
+| MSI Optix MAG321CQR Curved Gaming Monitor              | Spring |    98998.02 |
+| MSI Optix MAG321CQR Curved Gaming Monitor              | Summer |    58998.82 |
+| Nikon D850 DSLR Camera                                 | Spring |   560998.13 |
+| Nikon D850 DSLR Camera                                 | Summer |   371998.76 |
+| Nikon Z6 Mirrorless Camera                             | Spring |   337998.31 |
+| Nikon Z6 Mirrorless Camera                             | Summer |   279998.60 |
+| NVIDIA GeForce RTX 3080 Graphics Card                  | Fall   |      699.99 |
+| NVIDIA GeForce RTX 3080 Graphics Card                  | Spring |   153997.80 |
+| NVIDIA GeForce RTX 3080 Graphics Card                  | Summer |    92398.68 |
+| OnePlus 9 Pro                                          | Spring |   210597.66 |
+| OnePlus 9 Pro                                          | Summer |   139498.45 |
+| OnePlus Buds Pro                                       | Spring |    29398.04 |
+| OnePlus Buds Pro                                       | Summer |    19198.72 |
+| OnePlus Nord 2                                         | Spring |   101497.97 |
+| OnePlus Nord 2                                         | Summer |    71498.57 |
+| Razer Blade 15 Gaming Laptop                           | Spring |   413997.70 |
+| Razer Blade 15 Gaming Laptop                           | Summer |   233998.70 |
+| Razer Naga X Gaming Mouse                              | Spring |    16237.97 |
+| Razer Naga X Gaming Mouse                              | Summer |    11278.59 |
+| Red Tomatoes                                           | Spring |   397097.91 |
+| Red Tomatoes                                           | Summer |   286898.49 |
+| Ring Video Doorbell Pro 2                              | Spring |    48748.05 |
+| Ring Video Doorbell Pro 2                              | Summer |    31248.75 |
+| ROCCAT Vulcan Pro Mechanical Gaming Keyboard           | Spring |    38798.06 |
+| ROCCAT Vulcan Pro Mechanical Gaming Keyboard           | Summer |    26198.69 |
+| Roku Ultra 4K Streaming Player                         | Spring |    18698.13 |
+| Roku Ultra 4K Streaming Player                         | Summer |    12098.79 |
+| Samsung Galaxy Buds Pro                                | Spring |    45997.70 |
+| Samsung Galaxy Buds Pro                                | Summer |    24398.78 |
+| Samsung Galaxy Tab S7                                  | Spring |   138447.87 |
+| Samsung Galaxy Tab S7                                  | Summer |    88398.64 |
+| Samsung Galaxy Watch 4 Classic                         | Spring |    72097.94 |
+| Samsung Galaxy Watch 4 Classic                         | Summer |    44098.74 |
+| Samsung Odyssey G7 Gaming Monitor                      | Spring |   139998.00 |
+| Samsung Odyssey G7 Gaming Monitor                      | Summer |    91698.69 |
+| Samsung QLED 4K Smart TV                               | Spring |   308997.94 |
+| Samsung QLED 4K Smart TV                               | Summer |   197998.68 |
+| Sennheiser HD 660 S Open-Back Headphones               | Spring |   112997.74 |
+| Sennheiser HD 660 S Open-Back Headphones               | Summer |    72498.55 |
+| Sonos Roam Portable Bluetooth Speaker                  | Spring |    38247.75 |
+| Sonos Roam Portable Bluetooth Speaker                  | Summer |    22608.67 |
+| Sony A7 III Mirrorless Camera                          | Spring |   353998.23 |
+| Sony A7 III Mirrorless Camera                          | Summer |   263998.68 |
+| Sony Alpha 7C Mirrorless Camera                        | Spring |   422997.65 |
+| Sony Alpha 7C Mirrorless Camera                        | Summer |   257398.57 |
+| Sony WH-1000XM4 Headphones                             | Spring |    73847.89 |
+| Sony WH-1000XM4 Headphones                             | Summer |    60898.26 |
+| Sony Xperia 1 III                                      | Spring |   297697.71 |
+| Sony Xperia 1 III                                      | Summer |   148198.86 |
+| SteelSeries Arctis Pro Wireless Gaming Headset         | Spring |    73917.76 |
+| SteelSeries Arctis Pro Wireless Gaming Headset         | Summer |    44878.64 |
+| UE Megaboom 3 Portable Bluetooth Speaker               | Spring |    42397.88 |
+| UE Megaboom 3 Portable Bluetooth Speaker               | Summer |    26398.68 |
+| Xbox Series X                                          | Spring |    99998.00 |
+| Xbox Series X                                          | Summer |    59498.81 |
++--------------------------------------------------------+--------+-------------+
+212 rows in set (0.19 sec)
+
+
+Q5.
+Volatility = (Current Month Revenue − Previous Month Revenue / Previous Month Revenue ) * 100
+
+mysql> SELECT 
+       p.store_name,
+       p.supplier_name,
+         MONTH(sf.order_date) AS month,
+         SUM(sf.total_sale) AS monthly_revenue,
+         ROUND(
+             IFNULL(
+                 (SUM(sf.total_sale) - LAG(SUM(sf.total_sale)) OVER (PARTITION BY p.store_name, p.supplier_name ORDER BY MONTH(sf.order_date))) /
+                 LAG(SUM(sf.total_sale)) OVER (PARTITION BY p.store_name, p.supplier_name ORDER BY MONTH(sf.order_date)) * 100, 
+                 0
+             ), 
+             2
+         ) AS volatility
+     FROM 
+         sales_fact sf
+     JOIN 
+         products p ON sf.product_id = p.product_id
+     WHERE 
+         YEAR(sf.order_date) = 2019
+     GROUP BY 
+         p.store_name, p.supplier_name, MONTH(sf.order_date)
+     ORDER BY 
+         p.store_name, p.supplier_name, month;
++--------------+--------------------------------+-------+-----------------+------------+
+| store_name   | supplier_name                  | month | monthly_revenue | volatility |
++--------------+--------------------------------+-------+-----------------+------------+
+| Electro Mart | Amazon.com Inc.                |     4 |        50497.98 |       0.00 |
+| Electro Mart | Amazon.com Inc.                |     8 |        36748.53 |     -27.23 |
+| Electro Mart | Amazon.com Inc.                |     9 |          249.99 |     -99.32 |
+| Electro Mart | Apple Inc.                     |     4 |       201298.17 |       0.00 |
+| Electro Mart | Apple Inc.                     |     8 |       146298.67 |     -27.32 |
+| Electro Mart | Google LLC                     |     4 |       153995.88 |       0.00 |
+| Electro Mart | Google LLC                     |     5 |           99.99 |     -99.94 |
+| Electro Mart | Google LLC                     |     8 |       114597.24 |  114508.70 |
+| Electro Mart | LG Electronics                 |     4 |      1052296.02 |       0.00 |
+| Electro Mart | LG Electronics                 |     8 |       705997.35 |     -32.91 |
+| Electro Mart | OnePlus Technology             |     4 |       312095.63 |       0.00 |
+| Electro Mart | OnePlus Technology             |     8 |       210997.02 |     -32.39 |
+| Electro Mart | Ring (Amazon)                  |     4 |        48748.05 |       0.00 |
+| Electro Mart | Ring (Amazon)                  |     8 |        31248.75 |     -35.90 |
+| Electro Mart | Roku Inc.                      |     4 |        18698.13 |       0.00 |
+| Electro Mart | Roku Inc.                      |     8 |        12098.79 |     -35.29 |
+| Electro Mart | Samsung Electronics            |     4 |       308997.94 |       0.00 |
+| Electro Mart | Samsung Electronics            |     8 |       197998.68 |     -35.92 |
+| Electro Mart | Sony Corporation               |     4 |       297697.71 |       0.00 |
+| Electro Mart | Sony Corporation               |     8 |       148198.86 |     -50.22 |
+| Game Zone    | Acer Inc.                      |     4 |       332795.88 |       0.00 |
+| Game Zone    | Acer Inc.                      |     5 |          599.99 |     -99.82 |
+| Game Zone    | Acer Inc.                      |     8 |       193597.56 |   32166.80 |
+| Game Zone    | Alienware (Dell)               |     4 |       348095.88 |       0.00 |
+| Game Zone    | Alienware (Dell)               |     5 |          499.99 |     -99.86 |
+| Game Zone    | Alienware (Dell)               |     8 |       252297.11 |   50360.43 |
+| Game Zone    | AOC International              |     4 |        78747.75 |       0.00 |
+| Game Zone    | AOC International              |     8 |        50398.56 |     -36.00 |
+| Game Zone    | ASUS                           |     4 |       195996.30 |       0.00 |
+| Game Zone    | ASUS                           |     5 |         1399.97 |     -99.29 |
+| Game Zone    | ASUS                           |     8 |       147347.26 |   10425.03 |
+| Game Zone    | Corsair                        |     4 |        78275.87 |       0.00 |
+| Game Zone    | Corsair                        |     8 |        52917.22 |     -32.40 |
+| Game Zone    | Corsair                        |     9 |          199.99 |     -99.62 |
+| Game Zone    | HyperX (Kingston Technology)   |     4 |        33446.07 |       0.00 |
+| Game Zone    | HyperX (Kingston Technology)   |     5 |           99.99 |     -99.70 |
+| Game Zone    | HyperX (Kingston Technology)   |     8 |        23747.25 |   23649.62 |
+| Game Zone    | LG Electronics                 |     4 |       280498.13 |       0.00 |
+| Game Zone    | LG Electronics                 |     5 |         2999.98 |     -98.93 |
+| Game Zone    | LG Electronics                 |     8 |       191998.72 |    6300.00 |
+| Game Zone    | Logitech                       |     4 |        49135.73 |       0.00 |
+| Game Zone    | Logitech                       |     8 |        31767.28 |     -35.35 |
+| Game Zone    | Logitech                       |     9 |           79.99 |     -99.75 |
+| Game Zone    | Microsoft Corporation          |     4 |        99998.00 |       0.00 |
+| Game Zone    | Microsoft Corporation          |     8 |        59498.81 |     -40.50 |
+| Game Zone    | MSI (Micro-Star International) |     4 |       182595.93 |       0.00 |
+| Game Zone    | MSI (Micro-Star International) |     8 |       109797.55 |     -39.87 |
+| Game Zone    | Razer Inc.                     |     4 |        16237.97 |       0.00 |
+| Game Zone    | Razer Inc.                     |     8 |        11278.59 |     -30.54 |
+| Game Zone    | ROCCAT (Turtle Beach)          |     4 |        38798.06 |       0.00 |
+| Game Zone    | ROCCAT (Turtle Beach)          |     8 |        26198.69 |     -32.47 |
+| Game Zone    | Samsung Electronics            |     4 |       139998.00 |       0.00 |
+| Game Zone    | Samsung Electronics            |     8 |        91698.69 |     -34.50 |
+| Game Zone    | SteelSeries                    |     4 |        73257.78 |       0.00 |
+| Game Zone    | SteelSeries                    |     5 |          659.98 |     -99.10 |
+| Game Zone    | SteelSeries                    |     8 |        44878.64 |    6700.00 |
+| Health Zone  | Apple Inc.                     |     4 |       123796.35 |       0.00 |
+| Health Zone  | Apple Inc.                     |     8 |        95397.15 |     -22.94 |
+| Health Zone  | Apple Inc.                     |     9 |          279.99 |     -99.71 |
+| Health Zone  | Fitbit Inc.                    |     4 |        86535.82 |       0.00 |
+| Health Zone  | Fitbit Inc.                    |     8 |        53337.42 |     -38.36 |
+| Health Zone  | Garmin Ltd.                    |     4 |       284193.92 |       0.00 |
+| Health Zone  | Garmin Ltd.                    |     8 |       172996.29 |     -39.13 |
+| Health Zone  | Garmin Ltd.                    |     9 |          399.99 |     -99.77 |
+| Health Zone  | Samsung Electronics            |     4 |        72097.94 |       0.00 |
+| Health Zone  | Samsung Electronics            |     8 |        44098.74 |     -38.83 |
+| InnoTech     | Acer Inc.                      |     4 |       229198.09 |       0.00 |
+| InnoTech     | Acer Inc.                      |     5 |         1199.99 |     -99.48 |
+| InnoTech     | Acer Inc.                      |     8 |       145198.79 |   12000.00 |
+| InnoTech     | Acer Inc.                      |     9 |         1199.99 |     -99.17 |
+| InnoTech     | Alienware (Dell)               |     4 |       305998.30 |       0.00 |
+| InnoTech     | Alienware (Dell)               |     5 |         1799.99 |     -99.41 |
+| InnoTech     | Alienware (Dell)               |     8 |       262798.54 |   14500.00 |
+| InnoTech     | Dell Technologies              |     4 |       231398.22 |       0.00 |
+| InnoTech     | Dell Technologies              |     8 |       163798.74 |     -29.21 |
+| InnoTech     | HP Inc.                        |     4 |       265197.96 |       0.00 |
+| InnoTech     | HP Inc.                        |     8 |       172898.67 |     -34.80 |
+| InnoTech     | Lenovo Group                   |     4 |       212997.87 |       0.00 |
+| InnoTech     | Lenovo Group                   |     8 |       135998.64 |     -36.15 |
+| InnoTech     | MSI (Micro-Star International) |     4 |       459997.70 |       0.00 |
+| InnoTech     | MSI (Micro-Star International) |     8 |       271998.64 |     -40.87 |
+| InnoTech     | NVIDIA Corporation             |     4 |       153997.80 |       0.00 |
+| InnoTech     | NVIDIA Corporation             |     8 |        92398.68 |     -40.00 |
+| InnoTech     | NVIDIA Corporation             |     9 |          699.99 |     -99.24 |
+| InnoTech     | Razer Inc.                     |     4 |       413997.70 |       0.00 |
+| InnoTech     | Razer Inc.                     |     8 |       233998.70 |     -43.48 |
+| Pakistan     | Pakistan                       |     4 |       397097.91 |       0.00 |
+| Pakistan     | Pakistan                       |     8 |       286898.49 |     -27.75 |
+| Photo World  | Canon Inc.                     |     4 |      2836340.05 |       0.00 |
+| Photo World  | Canon Inc.                     |     8 |      1714293.68 |     -39.56 |
+| Photo World  | DJI                            |     4 |       257145.61 |       0.00 |
+| Photo World  | DJI                            |     5 |          799.99 |     -99.69 |
+| Photo World  | DJI                            |     8 |       171897.12 |   21387.41 |
+| Photo World  | Fujifilm Holdings Corporation  |     4 |       567296.10 |       0.00 |
+| Photo World  | Fujifilm Holdings Corporation  |     8 |       352697.57 |     -37.83 |
+| Photo World  | GoPro Inc.                     |     4 |       214295.48 |       0.00 |
+| Photo World  | GoPro Inc.                     |     8 |       110347.68 |     -48.51 |
+| Photo World  | GoPro Inc.                     |     9 |          499.99 |     -99.55 |
+| Photo World  | Nikon Corporation              |     4 |       895996.45 |       0.00 |
+| Photo World  | Nikon Corporation              |     5 |         2999.99 |     -99.67 |
+| Photo World  | Nikon Corporation              |     8 |       651997.36 |   21633.32 |
+| Photo World  | Sony Corporation               |     4 |       774995.89 |       0.00 |
+| Photo World  | Sony Corporation               |     5 |         1999.99 |     -99.74 |
+| Photo World  | Sony Corporation               |     8 |       521397.25 |   25969.99 |
+| Sound Zone   | Anker Innovations              |     4 |        48935.76 |       0.00 |
+| Sound Zone   | Anker Innovations              |     5 |          329.97 |     -99.33 |
+| Sound Zone   | Anker Innovations              |     8 |        32397.12 |    9718.20 |
+| Sound Zone   | Apple Inc.                     |     4 |       219341.83 |       0.00 |
+| Sound Zone   | Apple Inc.                     |     5 |          729.98 |     -99.67 |
+| Sound Zone   | Apple Inc.                     |     8 |       138514.73 |   18875.14 |
+| Sound Zone   | Beats by Dre (Apple Inc.)      |     4 |        55247.79 |       0.00 |
+| Sound Zone   | Beats by Dre (Apple Inc.)      |     8 |        35748.57 |     -35.29 |
+| Sound Zone   | Bose Corporation               |     4 |       131095.63 |       0.00 |
+| Sound Zone   | Bose Corporation               |     5 |          299.99 |     -99.77 |
+| Sound Zone   | Bose Corporation               |     8 |        86097.13 |   28600.00 |
+| Sound Zone   | Google LLC                     |     4 |        39396.06 |       0.00 |
+| Sound Zone   | Google LLC                     |     5 |           99.99 |     -99.75 |
+| Sound Zone   | Google LLC                     |     8 |        26297.37 |   26200.00 |
+| Sound Zone   | Jabra                          |     4 |        69716.36 |       0.00 |
+| Sound Zone   | Jabra                          |     5 |          149.99 |     -99.78 |
+| Sound Zone   | Jabra                          |     8 |        51097.34 |   33967.16 |
+| Sound Zone   | JBL                            |     4 |        46096.31 |       0.00 |
+| Sound Zone   | JBL                            |     8 |        33547.29 |     -27.22 |
+| Sound Zone   | OnePlus Technology             |     4 |        29398.04 |       0.00 |
+| Sound Zone   | OnePlus Technology             |     8 |        19198.72 |     -34.69 |
+| Sound Zone   | Samsung Electronics            |     4 |        45997.70 |       0.00 |
+| Sound Zone   | Samsung Electronics            |     8 |        24398.78 |     -46.96 |
+| Sound Zone   | Sennheiser                     |     4 |       112997.74 |       0.00 |
+| Sound Zone   | Sennheiser                     |     8 |        72498.55 |     -35.84 |
+| Sound Zone   | Sonos Inc.                     |     4 |        38247.75 |       0.00 |
+| Sound Zone   | Sonos Inc.                     |     8 |        22608.67 |     -40.89 |
+| Sound Zone   | Sony Corporation               |     4 |        73847.89 |       0.00 |
+| Sound Zone   | Sony Corporation               |     8 |        60898.26 |     -17.54 |
+| Sound Zone   | Ultimate Ears (Logitech)       |     4 |        42397.88 |       0.00 |
+| Sound Zone   | Ultimate Ears (Logitech)       |     8 |        26398.68 |     -37.74 |
+| Tech Haven   | Acer Inc.                      |     4 |       110547.99 |       0.00 |
+| Tech Haven   | Acer Inc.                      |     8 |        76998.60 |     -30.35 |
+| Tech Haven   | Apple Inc.                     |     4 |       915792.49 |       0.00 |
+| Tech Haven   | Apple Inc.                     |     5 |         2599.98 |     -99.72 |
+| Tech Haven   | Apple Inc.                     |     8 |       653194.58 |   25023.06 |
+| Tech Haven   | Dell Technologies              |     4 |       425595.98 |       0.00 |
+| Tech Haven   | Dell Technologies              |     5 |         1299.99 |     -99.69 |
+| Tech Haven   | Dell Technologies              |     8 |       216697.91 |   16569.20 |
+| Tech Haven   | Dell Technologies              |     9 |         1599.98 |     -99.26 |
+| Tech Haven   | HP Inc.                        |     4 |       339495.85 |       0.00 |
+| Tech Haven   | HP Inc.                        |     5 |          249.99 |     -99.93 |
+| Tech Haven   | HP Inc.                        |     8 |       207797.53 |   83022.34 |
+| Tech Haven   | Lenovo Group                   |     4 |       622596.06 |       0.00 |
+| Tech Haven   | Lenovo Group                   |     8 |       416297.26 |     -33.14 |
+| Tech Haven   | Logitech                       |     4 |        21697.83 |       0.00 |
+| Tech Haven   | Logitech                       |     5 |           99.99 |     -99.54 |
+| Tech Haven   | Logitech                       |     8 |        13098.69 |   13000.00 |
+| Tech Haven   | Microsoft Corporation          |     4 |       431595.78 |       0.00 |
+| Tech Haven   | Microsoft Corporation          |     8 |       277197.31 |     -35.77 |
+| Tech Haven   | Microsoft Corporation          |     9 |         2599.98 |     -99.06 |
+| Tech Haven   | Samsung Electronics            |     4 |       138447.87 |       0.00 |
+| Tech Haven   | Samsung Electronics            |     8 |        88398.64 |     -36.15 |
++--------------+--------------------------------+-------+-----------------+------------+
+157 rows in set (0.19 sec)
+
+
+Q6.
+
+mysql> SELECT 
+         p1.product_name AS product_1,
+         p2.product_name AS product_2,
+         COUNT(*) AS frequency
+     FROM 
+         sales_fact sf1
+     JOIN 
+         sales_fact sf2 ON sf1.order_id = sf2.order_id AND sf1.product_id < sf2.product_id
+     JOIN 
+         products p1 ON sf1.product_id = p1.product_id
+     JOIN 
+         products p2 ON sf2.product_id = p2.product_id
+     GROUP BY 
+         p1.product_name, p2.product_name
+     ORDER BY 
+         frequency DESC
+     LIMIT 5;
+Empty set (0.13 sec)
+
+
+Q7.
+
+mysql> SELECT 
+       p.store_name,
+         p.supplier_name,
+         p.product_name,
+         YEAR(sf.order_date) AS year,
+         SUM(sf.total_sale) AS total_revenue
+     FROM 
+         sales_fact sf
+     JOIN 
+         products p ON sf.product_id = p.product_id
+     GROUP BY 
+         p.store_name, p.supplier_name, p.product_name, YEAR(sf.order_date)
+     UNION ALL
+     SELECT 
+         p.store_name,
+         p.supplier_name,
+         NULL AS product_name,
+         NULL AS year,
+         SUM(sf.total_sale) AS total_revenue
+     FROM 
+         sales_fact sf
+     JOIN 
+         products p ON sf.product_id = p.product_id
+     GROUP BY 
+         p.store_name, p.supplier_name
+     ORDER BY 
+         1, 2, 3, 4;
++--------------+--------------------------------+--------------------------------------------------------+------+---------------+
+| store_name   | supplier_name                  | product_name                                           | year | total_revenue |
++--------------+--------------------------------+--------------------------------------------------------+------+---------------+
+| Electro Mart | Amazon.com Inc.                | NULL                                                   | NULL |      87746.49 |
+| Electro Mart | Amazon.com Inc.                | Amazon Echo Show 10 (3rd Gen)                          | 1819 |        249.99 |
+| Electro Mart | Amazon.com Inc.                | Amazon Echo Show 10 (3rd Gen)                          | 2019 |      87496.50 |
+| Electro Mart | Apple Inc.                     | NULL                                                   | NULL |     347596.84 |
+| Electro Mart | Apple Inc.                     | iPhone 13 Pro                                          | 2019 |     347596.84 |
+| Electro Mart | Google LLC                     | NULL                                                   | NULL |     268693.11 |
+| Electro Mart | Google LLC                     | Google Nest Hub (2nd Gen)                              | 2019 |      35596.44 |
+| Electro Mart | Google LLC                     | Google Pixel 6                                         | 2019 |     233096.67 |
+| Electro Mart | LG Electronics                 | NULL                                                   | NULL |    1758293.37 |
+| Electro Mart | LG Electronics                 | LG C1 OLED 4K TV                                       | 2019 |     940796.64 |
+| Electro Mart | LG Electronics                 | LG OLED C1 4K TV                                       | 2019 |     817496.73 |
+| Electro Mart | OnePlus Technology             | NULL                                                   | NULL |     523092.65 |
+| Electro Mart | OnePlus Technology             | OnePlus 9 Pro                                          | 2019 |     350096.11 |
+| Electro Mart | OnePlus Technology             | OnePlus Nord 2                                         | 2019 |     172996.54 |
+| Electro Mart | Ring (Amazon)                  | NULL                                                   | NULL |      79996.80 |
+| Electro Mart | Ring (Amazon)                  | Ring Video Doorbell Pro 2                              | 2019 |      79996.80 |
+| Electro Mart | Roku Inc.                      | NULL                                                   | NULL |      30796.92 |
+| Electro Mart | Roku Inc.                      | Roku Ultra 4K Streaming Player                         | 2019 |      30796.92 |
+| Electro Mart | Samsung Electronics            | NULL                                                   | NULL |     506996.62 |
+| Electro Mart | Samsung Electronics            | Samsung QLED 4K Smart TV                               | 2019 |     506996.62 |
+| Electro Mart | Sony Corporation               | NULL                                                   | NULL |     445896.57 |
+| Electro Mart | Sony Corporation               | Sony Xperia 1 III                                      | 2019 |     445896.57 |
+| Game Zone    | Acer Inc.                      | NULL                                                   | NULL |     526993.43 |
+| Game Zone    | Acer Inc.                      | Acer Predator X34 Curved Gaming Monitor                | 2019 |     331996.68 |
+| Game Zone    | Acer Inc.                      | Acer Predator XB271HU Gaming Monitor                   | 2019 |     194996.75 |
+| Game Zone    | Alienware (Dell)               | NULL                                                   | NULL |     600892.98 |
+| Game Zone    | Alienware (Dell)               | Alienware AW2521HFL Gaming Monitor                     | 2019 |     172496.55 |
+| Game Zone    | Alienware (Dell)               | Dell Alienware AW3420DW Curved Gaming Monitor          | 2019 |     428396.43 |
+| Game Zone    | AOC International              | NULL                                                   | NULL |     129146.31 |
+| Game Zone    | AOC International              | AOC CQ32G1 Curved Gaming Monitor                       | 2019 |     129146.31 |
+| Game Zone    | ASUS                           | NULL                                                   | NULL |     344743.53 |
+| Game Zone    | ASUS                           | ASUS ROG Swift PG279Q Gaming Monitor                   | 2019 |     236596.62 |
+| Game Zone    | ASUS                           | ASUS TUF Gaming VG279QM Monitor                        | 2019 |     108146.91 |
+| Game Zone    | Corsair                        | NULL                                                   | NULL |     131393.08 |
+| Game Zone    | Corsair                        | Corsair K95 RGB Platinum XT Mechanical Gaming Keyboard | 2019 |      68396.58 |
+| Game Zone    | Corsair                        | Corsair Virtuoso RGB Wireless Gaming Headset           | 2019 |      62996.50 |
+| Game Zone    | HyperX (Kingston Technology)   | NULL                                                   | NULL |      57293.31 |
+| Game Zone    | HyperX (Kingston Technology)   | HyperX Alloy FPS Pro Mechanical Gaming Keyboard        | 2019 |      22396.80 |
+| Game Zone    | HyperX (Kingston Technology)   | HyperX Cloud II Gaming Headset                         | 2019 |      34896.51 |
+| Game Zone    | LG Electronics                 | NULL                                                   | NULL |     475496.83 |
+| Game Zone    | LG Electronics                 | LG UltraGear 27GN950-B Gaming Monitor                  | 2019 |     475496.83 |
+| Game Zone    | Logitech                       | NULL                                                   | NULL |      80983.00 |
+| Game Zone    | Logitech                       | Logitech G Pro X Mechanical Gaming Keyboard            | 2019 |      53546.43 |
+| Game Zone    | Logitech                       | Logitech G502 HERO Gaming Mouse                        | 2019 |      27436.57 |
+| Game Zone    | Microsoft Corporation          | NULL                                                   | NULL |     159496.81 |
+| Game Zone    | Microsoft Corporation          | Xbox Series X                                          | 2019 |     159496.81 |
+| Game Zone    | MSI (Micro-Star International) | NULL                                                   | NULL |     292393.48 |
+| Game Zone    | MSI (Micro-Star International) | MSI Optix MAG271CQR Curved Gaming Monitor              | 2019 |     134396.64 |
+| Game Zone    | MSI (Micro-Star International) | MSI Optix MAG321CQR Curved Gaming Monitor              | 2019 |     157996.84 |
+| Game Zone    | Razer Inc.                     | NULL                                                   | NULL |      27516.56 |
+| Game Zone    | Razer Inc.                     | Razer Naga X Gaming Mouse                              | 2019 |      27516.56 |
+| Game Zone    | ROCCAT (Turtle Beach)          | NULL                                                   | NULL |      64996.75 |
+| Game Zone    | ROCCAT (Turtle Beach)          | ROCCAT Vulcan Pro Mechanical Gaming Keyboard           | 2019 |      64996.75 |
+| Game Zone    | Samsung Electronics            | NULL                                                   | NULL |     231696.69 |
+| Game Zone    | Samsung Electronics            | Samsung Odyssey G7 Gaming Monitor                      | 2019 |     231696.69 |
+| Game Zone    | SteelSeries                    | NULL                                                   | NULL |     118796.40 |
+| Game Zone    | SteelSeries                    | SteelSeries Arctis Pro Wireless Gaming Headset         | 2019 |     118796.40 |
+| Health Zone  | Apple Inc.                     | NULL                                                   | NULL |     219473.49 |
+| Health Zone  | Apple Inc.                     | Apple Watch SE                                         | 2019 |      95476.59 |
+| Health Zone  | Apple Inc.                     | Apple Watch Series 7                                   | 2019 |     123996.90 |
+| Health Zone  | Fitbit Inc.                    | NULL                                                   | NULL |     139873.24 |
+| Health Zone  | Fitbit Inc.                    | Fitbit Charge 5                                        | 2019 |      56156.88 |
+| Health Zone  | Fitbit Inc.                    | Fitbit Versa 3 Smartwatch                              | 2019 |      83716.36 |
+| Health Zone  | Garmin Ltd.                    | NULL                                                   | NULL |     457590.20 |
+| Health Zone  | Garmin Ltd.                    | Garmin Forerunner 945 GPS Smartwatch                   | 2019 |     196796.72 |
+| Health Zone  | Garmin Ltd.                    | Garmin Instinct Solar Smartwatch                       | 2019 |     137196.57 |
+| Health Zone  | Garmin Ltd.                    | Garmin Venu 2 Smartwatch                               | 2019 |     123596.91 |
+| Health Zone  | Samsung Electronics            | NULL                                                   | NULL |     116196.68 |
+| Health Zone  | Samsung Electronics            | Samsung Galaxy Watch 4 Classic                         | 2019 |     116196.68 |
+| InnoTech     | Acer Inc.                      | NULL                                                   | NULL |     376796.86 |
+| InnoTech     | Acer Inc.                      | Acer Predator Helios 300 Gaming Laptop                 | 2019 |     376796.86 |
+| InnoTech     | Alienware (Dell)               | NULL                                                   | NULL |     570596.83 |
+| InnoTech     | Alienware (Dell)               | Alienware Aurora Gaming PC                             | 2019 |     570596.83 |
+| InnoTech     | Dell Technologies              | NULL                                                   | NULL |     395196.96 |
+| InnoTech     | Dell Technologies              | Dell G5 Gaming Desktop                                 | 2019 |     395196.96 |
+| InnoTech     | HP Inc.                        | NULL                                                   | NULL |     438096.63 |
+| InnoTech     | HP Inc.                        | HP Omen 15 Gaming Laptop                               | 2019 |     438096.63 |
+| InnoTech     | Lenovo Group                   | NULL                                                   | NULL |     348996.51 |
+| InnoTech     | Lenovo Group                   | Lenovo Legion 5 Gaming Laptop                          | 2019 |     348996.51 |
+| InnoTech     | MSI (Micro-Star International) | NULL                                                   | NULL |     731996.34 |
+| InnoTech     | MSI (Micro-Star International) | MSI GS66 Stealth Gaming Laptop                         | 2019 |     731996.34 |
+| InnoTech     | NVIDIA Corporation             | NULL                                                   | NULL |     247096.47 |
+| InnoTech     | NVIDIA Corporation             | NVIDIA GeForce RTX 3080 Graphics Card                  | 2019 |     247096.47 |
+| InnoTech     | Razer Inc.                     | NULL                                                   | NULL |     647996.40 |
+| InnoTech     | Razer Inc.                     | Razer Blade 15 Gaming Laptop                           | 2019 |     647996.40 |
+| Pakistan     | Pakistan                       | NULL                                                   | NULL |     683996.40 |
+| Pakistan     | Pakistan                       | Red Tomatoes                                           | 2019 |     683996.40 |
+| Photo World  | Canon Inc.                     | NULL                                                   | NULL |    4550633.73 |
+| Photo World  | Canon Inc.                     | Canon EOS 90D DSLR Camera                              | 2019 |     337197.19 |
+| Photo World  | Canon Inc.                     | Canon EOS M50 Mark II Mirrorless Camera                | 2019 |     199546.93 |
+| Photo World  | Canon Inc.                     | Canon EOS R5 Mirrorless Camera                         | 2019 |    1266996.38 |
+| Photo World  | Canon Inc.                     | Canon EOS RP Mirrorless Camera                         | 2019 |     413396.82 |
+| Photo World  | Canon Inc.                     | Canon EOS-1D X Mark III DSLR Camera                    | 2019 |    2333496.41 |
+| Photo World  | DJI                            | NULL                                                   | NULL |     429842.72 |
+| Photo World  | DJI                            | DJI Mavic Air 2 Drone                                  | 2019 |     311196.11 |
+| Photo World  | DJI                            | DJI Osmo Pocket 2                                      | 2019 |     118646.61 |
+| Photo World  | Fujifilm Holdings Corporation  | NULL                                                   | NULL |     919993.67 |
+| Photo World  | Fujifilm Holdings Corporation  | Fujifilm X-T4 Mirrorless Camera                        | 2019 |     506996.62 |
+| Photo World  | Fujifilm Holdings Corporation  | Fujifilm X100V Compact Camera                          | 2019 |     412997.05 |
+| Photo World  | GoPro Inc.                     | NULL                                                   | NULL |     325143.15 |
+| Photo World  | GoPro Inc.                     | GoPro HERO10 Black Action Camera                       | 2019 |     168996.62 |
+| Photo World  | GoPro Inc.                     | GoPro HERO9 Black Action Camera                        | 2019 |     156146.53 |
+| Photo World  | Nikon Corporation              | NULL                                                   | NULL |    1550993.80 |
+| Photo World  | Nikon Corporation              | Nikon D850 DSLR Camera                                 | 2019 |     932996.89 |
+| Photo World  | Nikon Corporation              | Nikon Z6 Mirrorless Camera                             | 2019 |     617996.91 |
+| Photo World  | Sony Corporation               | NULL                                                   | NULL |    1298393.13 |
+| Photo World  | Sony Corporation               | Sony A7 III Mirrorless Camera                          | 2019 |     617996.91 |
+| Photo World  | Sony Corporation               | Sony Alpha 7C Mirrorless Camera                        | 2019 |     680396.22 |
+| Sound Zone   | Anker Innovations              | NULL                                                   | NULL |      81662.85 |
+| Sound Zone   | Anker Innovations              | Anker Soundcore Flare+ Portable Speaker                | 2019 |      37596.24 |
+| Sound Zone   | Anker Innovations              | Anker Soundcore Liberty Air 2 Pro Earbuds              | 2019 |      44066.61 |
+| Sound Zone   | Apple Inc.                     | NULL                                                   | NULL |     358586.54 |
+| Sound Zone   | Apple Inc.                     | AirPods Pro                                            | 2019 |      84996.60 |
+| Sound Zone   | Apple Inc.                     | Apple AirPods (3rd generation)                         | 2019 |      61196.60 |
+| Sound Zone   | Apple Inc.                     | Apple AirPods Max                                      | 2019 |     178196.76 |
+| Sound Zone   | Apple Inc.                     | Apple HomePod Mini                                     | 2019 |      34196.58 |
+| Sound Zone   | Beats by Dre (Apple Inc.)      | NULL                                                   | NULL |      90996.36 |
+| Sound Zone   | Beats by Dre (Apple Inc.)      | Beats Powerbeats Pro Wireless Earphones                | 2019 |      90996.36 |
+| Sound Zone   | Bose Corporation               | NULL                                                   | NULL |     217492.75 |
+| Sound Zone   | Bose Corporation               | Bose QuietComfort 35 II Wireless Headphones            | 2019 |     118196.06 |
+| Sound Zone   | Bose Corporation               | Bose SoundLink Revolve+ Bluetooth Speaker              | 2019 |      99296.69 |
+| Sound Zone   | Google LLC                     | NULL                                                   | NULL |      65793.42 |
+| Sound Zone   | Google LLC                     | Google Nest Audio Smart Speaker                        | 2019 |      33296.67 |
+| Sound Zone   | Google LLC                     | Google Pixel Buds A-Series                             | 2019 |      32496.75 |
+| Sound Zone   | Jabra                          | NULL                                                   | NULL |     120963.69 |
+| Sound Zone   | Jabra                          | Jabra Elite 75t True Wireless Earbuds                  | 2019 |      45296.98 |
+| Sound Zone   | Jabra                          | Jabra Elite 85t True Wireless Earbuds                  | 2019 |      75666.71 |
+| Sound Zone   | JBL                            | NULL                                                   | NULL |      79643.60 |
+| Sound Zone   | JBL                            | JBL Charge 4 Portable Bluetooth Speaker                | 2019 |      46946.87 |
+| Sound Zone   | JBL                            | JBL Flip 5 Portable Bluetooth Speaker                  | 2019 |      32696.73 |
+| Sound Zone   | OnePlus Technology             | NULL                                                   | NULL |      48596.76 |
+| Sound Zone   | OnePlus Technology             | OnePlus Buds Pro                                       | 2019 |      48596.76 |
+| Sound Zone   | Samsung Electronics            | NULL                                                   | NULL |      70396.48 |
+| Sound Zone   | Samsung Electronics            | Samsung Galaxy Buds Pro                                | 2019 |      70396.48 |
+| Sound Zone   | Sennheiser                     | NULL                                                   | NULL |     185496.29 |
+| Sound Zone   | Sennheiser                     | Sennheiser HD 660 S Open-Back Headphones               | 2019 |     185496.29 |
+| Sound Zone   | Sonos Inc.                     | NULL                                                   | NULL |      60856.42 |
+| Sound Zone   | Sonos Inc.                     | Sonos Roam Portable Bluetooth Speaker                  | 2019 |      60856.42 |
+| Sound Zone   | Sony Corporation               | NULL                                                   | NULL |     134746.15 |
+| Sound Zone   | Sony Corporation               | Sony WH-1000XM4 Headphones                             | 2019 |     134746.15 |
+| Sound Zone   | Ultimate Ears (Logitech)       | NULL                                                   | NULL |      68796.56 |
+| Sound Zone   | Ultimate Ears (Logitech)       | UE Megaboom 3 Portable Bluetooth Speaker               | 2019 |      68796.56 |
+| Tech Haven   | Acer Inc.                      | NULL                                                   | NULL |     187546.59 |
+| Tech Haven   | Acer Inc.                      | Acer Aspire 5 Laptop                                   | 2019 |     187546.59 |
+| Tech Haven   | Apple Inc.                     | NULL                                                   | NULL |    1571587.05 |
+| Tech Haven   | Apple Inc.                     | Apple iPad Pro (12.9-inch)                             | 2019 |     338796.92 |
+| Tech Haven   | Apple Inc.                     | iPad Air                                               | 2019 |     207596.54 |
+| Tech Haven   | Apple Inc.                     | MacBook Air M2                                         | 2019 |     385196.79 |
+| Tech Haven   | Apple Inc.                     | MacBook Pro M2                                         | 2019 |     639996.80 |
+| Tech Haven   | Dell Technologies              | NULL                                                   | NULL |     645193.86 |
+| Tech Haven   | Dell Technologies              | Dell Inspiron 14 Laptop                                | 2019 |     244796.94 |
+| Tech Haven   | Dell Technologies              | Dell XPS 13 Laptop                                     | 2019 |     400396.92 |
+| Tech Haven   | HP Inc.                        | NULL                                                   | NULL |     547543.37 |
+| Tech Haven   | HP Inc.                        | HP Pavilion 27xw Monitor                               | 2019 |      82746.69 |
+| Tech Haven   | HP Inc.                        | HP Spectre x360 Laptop                                 | 2019 |     464796.68 |
+| Tech Haven   | Lenovo Group                   | NULL                                                   | NULL |    1038893.32 |
+| Tech Haven   | Lenovo Group                   | Lenovo ThinkPad X1 Carbon Gen 9 Laptop                 | 2019 |     644096.61 |
+| Tech Haven   | Lenovo Group                   | Lenovo Yoga C930 2-in-1 Laptop                         | 2019 |     394796.71 |
+| Tech Haven   | Logitech                       | NULL                                                   | NULL |      34896.51 |
+| Tech Haven   | Logitech                       | Logitech MX Master 3 Wireless Mouse                    | 2019 |      34896.51 |
+| Tech Haven   | Microsoft Corporation          | NULL                                                   | NULL |     711393.07 |
+| Tech Haven   | Microsoft Corporation          | Microsoft Surface Laptop 4                             | 2019 |     408196.86 |
+| Tech Haven   | Microsoft Corporation          | Microsoft Surface Pro 7                                | 2019 |     303196.21 |
+| Tech Haven   | Samsung Electronics            | NULL                                                   | NULL |     226846.51 |
+| Tech Haven   | Samsung Electronics            | Samsung Galaxy Tab S7                                  | 2019 |     226846.51 |
++--------------+--------------------------------+--------------------------------------------------------+------+---------------+
+165 rows in set (0.27 sec)
+
+
+Q8. 
+
+mysql> SELECT 
+         p.product_name,
+         CASE 
+             WHEN MONTH(sf.order_date) <= 6 THEN 'H1'
+             ELSE 'H2'
+         END AS half_year,
+         SUM(sf.total_sale) AS total_revenue,
+         SUM(sf.quantity) AS total_quantity
+     FROM 
+         sales_fact sf
+     JOIN 
+         products p ON sf.product_id = p.product_id
+     GROUP BY 
+         p.product_name, half_year
+     ORDER BY 
+         p.product_name, half_year;
++--------------------------------------------------------+-----------+---------------+----------------+
+| product_name                                           | half_year | total_revenue | total_quantity |
++--------------------------------------------------------+-----------+---------------+----------------+
+| Acer Aspire 5 Laptop                                   | H1        |     110547.99 |            201 |
+| Acer Aspire 5 Laptop                                   | H2        |      76998.60 |            140 |
+| Acer Predator Helios 300 Gaming Laptop                 | H1        |     230398.08 |            192 |
+| Acer Predator Helios 300 Gaming Laptop                 | H2        |     146398.78 |            122 |
+| Acer Predator X34 Curved Gaming Monitor                | H1        |     213997.86 |            214 |
+| Acer Predator X34 Curved Gaming Monitor                | H2        |     117998.82 |            118 |
+| Acer Predator XB271HU Gaming Monitor                   | H1        |     119398.01 |            199 |
+| Acer Predator XB271HU Gaming Monitor                   | H2        |      75598.74 |            126 |
+| AirPods Pro                                            | H1        |      51247.95 |            205 |
+| AirPods Pro                                            | H2        |      33748.65 |            135 |
+| Alienware Aurora Gaming PC                             | H1        |     307798.29 |            171 |
+| Alienware Aurora Gaming PC                             | H2        |     262798.54 |            146 |
+| Alienware AW2521HFL Gaming Monitor                     | H1        |     104997.90 |            210 |
+| Alienware AW2521HFL Gaming Monitor                     | H2        |      67498.65 |            135 |
+| Amazon Echo Show 10 (3rd Gen)                          | H1        |      50747.97 |            203 |
+| Amazon Echo Show 10 (3rd Gen)                          | H2        |      36998.52 |            148 |
+| Anker Soundcore Flare+ Portable Speaker                | H1        |      20797.92 |            208 |
+| Anker Soundcore Flare+ Portable Speaker                | H2        |      16798.32 |            168 |
+| Anker Soundcore Liberty Air 2 Pro Earbuds              | H1        |      28467.81 |            219 |
+| Anker Soundcore Liberty Air 2 Pro Earbuds              | H2        |      15598.80 |            120 |
+| AOC CQ32G1 Curved Gaming Monitor                       | H1        |      78747.75 |            225 |
+| AOC CQ32G1 Curved Gaming Monitor                       | H2        |      50398.56 |            144 |
+| Apple AirPods (3rd generation)                         | H1        |      36177.99 |            201 |
+| Apple AirPods (3rd generation)                         | H2        |      25018.61 |            139 |
+| Apple AirPods Max                                      | H1        |     111647.97 |            203 |
+| Apple AirPods Max                                      | H2        |      66548.79 |            121 |
+| Apple HomePod Mini                                     | H1        |      20997.90 |            210 |
+| Apple HomePod Mini                                     | H2        |      13198.68 |            132 |
+| Apple iPad Pro (12.9-inch)                             | H1        |     204598.14 |            186 |
+| Apple iPad Pro (12.9-inch)                             | H2        |     134198.78 |            122 |
+| Apple Watch SE                                         | H1        |      51798.15 |            185 |
+| Apple Watch SE                                         | H2        |      43678.44 |            156 |
+| Apple Watch Series 7                                   | H1        |      71998.20 |            180 |
+| Apple Watch Series 7                                   | H2        |      51998.70 |            130 |
+| ASUS ROG Swift PG279Q Gaming Monitor                   | H1        |     133698.09 |            191 |
+| ASUS ROG Swift PG279Q Gaming Monitor                   | H2        |     102898.53 |            147 |
+| ASUS TUF Gaming VG279QM Monitor                        | H1        |      63698.18 |            182 |
+| ASUS TUF Gaming VG279QM Monitor                        | H2        |      44448.73 |            127 |
+| Beats Powerbeats Pro Wireless Earphones                | H1        |      55247.79 |            221 |
+| Beats Powerbeats Pro Wireless Earphones                | H2        |      35748.57 |            143 |
+| Bose QuietComfort 35 II Wireless Headphones            | H1        |      68697.71 |            229 |
+| Bose QuietComfort 35 II Wireless Headphones            | H2        |      49498.35 |            165 |
+| Bose SoundLink Revolve+ Bluetooth Speaker              | H1        |      62697.91 |            209 |
+| Bose SoundLink Revolve+ Bluetooth Speaker              | H2        |      36598.78 |            122 |
+| Canon EOS 90D DSLR Camera                              | H1        |     209998.25 |            175 |
+| Canon EOS 90D DSLR Camera                              | H2        |     127198.94 |            106 |
+| Canon EOS M50 Mark II Mirrorless Camera                | H1        |     115048.23 |            177 |
+| Canon EOS M50 Mark II Mirrorless Camera                | H2        |      84498.70 |            130 |
+| Canon EOS R5 Mirrorless Camera                         | H1        |     787497.75 |            225 |
+| Canon EOS R5 Mirrorless Camera                         | H2        |     479498.63 |            137 |
+| Canon EOS RP Mirrorless Camera                         | H1        |     248298.09 |            191 |
+| Canon EOS RP Mirrorless Camera                         | H2        |     165098.73 |            127 |
+| Canon EOS-1D X Mark III DSLR Camera                    | H1        |    1475497.73 |            227 |
+| Canon EOS-1D X Mark III DSLR Camera                    | H2        |     857998.68 |            132 |
+| Corsair K95 RGB Platinum XT Mechanical Gaming Keyboard | H1        |      39398.03 |            197 |
+| Corsair K95 RGB Platinum XT Mechanical Gaming Keyboard | H2        |      28998.55 |            145 |
+| Corsair Virtuoso RGB Wireless Gaming Headset           | H1        |      38877.84 |            216 |
+| Corsair Virtuoso RGB Wireless Gaming Headset           | H2        |      24118.66 |            134 |
+| Dell Alienware AW3420DW Curved Gaming Monitor          | H1        |     243597.97 |            203 |
+| Dell Alienware AW3420DW Curved Gaming Monitor          | H2        |     184798.46 |            154 |
+| Dell G5 Gaming Desktop                                 | H1        |     231398.22 |            178 |
+| Dell G5 Gaming Desktop                                 | H2        |     163798.74 |            126 |
+| Dell Inspiron 14 Laptop                                | H1        |     155198.06 |            194 |
+| Dell Inspiron 14 Laptop                                | H2        |      89598.88 |            112 |
+| Dell XPS 13 Laptop                                     | H1        |     271697.91 |            209 |
+| Dell XPS 13 Laptop                                     | H2        |     128699.01 |             99 |
+| DJI Mavic Air 2 Drone                                  | H1        |     184797.69 |            231 |
+| DJI Mavic Air 2 Drone                                  | H2        |     126398.42 |            158 |
+| DJI Osmo Pocket 2                                      | H1        |      73147.91 |            209 |
+| DJI Osmo Pocket 2                                      | H2        |      45498.70 |            130 |
+| Fitbit Charge 5                                        | H1        |      34558.08 |            192 |
+| Fitbit Charge 5                                        | H2        |      21598.80 |            120 |
+| Fitbit Versa 3 Smartwatch                              | H1        |      51977.74 |            226 |
+| Fitbit Versa 3 Smartwatch                              | H2        |      31738.62 |            138 |
+| Fujifilm X-T4 Mirrorless Camera                        | H1        |     319497.87 |            213 |
+| Fujifilm X-T4 Mirrorless Camera                        | H2        |     187498.75 |            125 |
+| Fujifilm X100V Compact Camera                          | H1        |     247798.23 |            177 |
+| Fujifilm X100V Compact Camera                          | H2        |     165198.82 |            118 |
+| Garmin Forerunner 945 GPS Smartwatch                   | H1        |     122997.95 |            205 |
+| Garmin Forerunner 945 GPS Smartwatch                   | H2        |      73798.77 |            123 |
+| Garmin Instinct Solar Smartwatch                       | H1        |      85997.85 |            215 |
+| Garmin Instinct Solar Smartwatch                       | H2        |      51198.72 |            128 |
+| Garmin Venu 2 Smartwatch                               | H1        |      75198.12 |            188 |
+| Garmin Venu 2 Smartwatch                               | H2        |      48398.79 |            121 |
+| Google Nest Audio Smart Speaker                        | H1        |      21697.83 |            217 |
+| Google Nest Audio Smart Speaker                        | H2        |      11598.84 |            116 |
+| Google Nest Hub (2nd Gen)                              | H1        |      22497.75 |            225 |
+| Google Nest Hub (2nd Gen)                              | H2        |      13098.69 |            131 |
+| Google Pixel 6                                         | H1        |     131598.12 |            188 |
+| Google Pixel 6                                         | H2        |     101498.55 |            145 |
+| Google Pixel Buds A-Series                             | H1        |      17798.22 |            178 |
+| Google Pixel Buds A-Series                             | H2        |      14698.53 |            147 |
+| GoPro HERO10 Black Action Camera                       | H1        |     108997.82 |            218 |
+| GoPro HERO10 Black Action Camera                       | H2        |      59998.80 |            120 |
+| GoPro HERO9 Black Action Camera                        | H1        |     105297.66 |            234 |
+| GoPro HERO9 Black Action Camera                        | H2        |      50848.87 |            113 |
+| HP Omen 15 Gaming Laptop                               | H1        |     265197.96 |            204 |
+| HP Omen 15 Gaming Laptop                               | H2        |     172898.67 |            133 |
+| HP Pavilion 27xw Monitor                               | H1        |      52747.89 |            211 |
+| HP Pavilion 27xw Monitor                               | H2        |      29998.80 |            120 |
+| HP Spectre x360 Laptop                                 | H1        |     286997.95 |            205 |
+| HP Spectre x360 Laptop                                 | H2        |     177798.73 |            127 |
+| HyperX Alloy FPS Pro Mechanical Gaming Keyboard        | H1        |      13648.05 |            195 |
+| HyperX Alloy FPS Pro Mechanical Gaming Keyboard        | H2        |       8748.75 |            125 |
+| HyperX Cloud II Gaming Headset                         | H1        |      19898.01 |            199 |
+| HyperX Cloud II Gaming Headset                         | H2        |      14998.50 |            150 |
+| iPad Air                                               | H1        |     119398.01 |            199 |
+| iPad Air                                               | H2        |      88198.53 |            147 |
+| iPhone 13 Pro                                          | H1        |     201298.17 |            183 |
+| iPhone 13 Pro                                          | H2        |     146298.67 |            133 |
+| Jabra Elite 75t True Wireless Earbuds                  | H1        |      26398.24 |            176 |
+| Jabra Elite 75t True Wireless Earbuds                  | H2        |      18898.74 |            126 |
+| Jabra Elite 85t True Wireless Earbuds                  | H1        |      43468.11 |            189 |
+| Jabra Elite 85t True Wireless Earbuds                  | H2        |      32198.60 |            140 |
+| JBL Charge 4 Portable Bluetooth Speaker                | H1        |      27598.16 |            184 |
+| JBL Charge 4 Portable Bluetooth Speaker                | H2        |      19348.71 |            129 |
+| JBL Flip 5 Portable Bluetooth Speaker                  | H1        |      18498.15 |            185 |
+| JBL Flip 5 Portable Bluetooth Speaker                  | H2        |      14198.58 |            142 |
+| Lenovo Legion 5 Gaming Laptop                          | H1        |     212997.87 |            213 |
+| Lenovo Legion 5 Gaming Laptop                          | H2        |     135998.64 |            136 |
+| Lenovo ThinkPad X1 Carbon Gen 9 Laptop                 | H1        |     406597.86 |            214 |
+| Lenovo ThinkPad X1 Carbon Gen 9 Laptop                 | H2        |     237498.75 |            125 |
+| Lenovo Yoga C930 2-in-1 Laptop                         | H1        |     215998.20 |            180 |
+| Lenovo Yoga C930 2-in-1 Laptop                         | H2        |     178798.51 |            149 |
+| LG C1 OLED 4K TV                                       | H1        |     534798.09 |            191 |
+| LG C1 OLED 4K TV                                       | H2        |     405998.55 |            145 |
+| LG OLED C1 4K TV                                       | H1        |     517497.93 |            207 |
+| LG OLED C1 4K TV                                       | H2        |     299998.80 |            120 |
+| LG UltraGear 27GN950-B Gaming Monitor                  | H1        |     283498.11 |            189 |
+| LG UltraGear 27GN950-B Gaming Monitor                  | H2        |     191998.72 |            128 |
+| Logitech G Pro X Mechanical Gaming Keyboard            | H1        |      32097.86 |            214 |
+| Logitech G Pro X Mechanical Gaming Keyboard            | H2        |      21448.57 |            143 |
+| Logitech G502 HERO Gaming Mouse                        | H1        |      17037.87 |            213 |
+| Logitech G502 HERO Gaming Mouse                        | H2        |      10398.70 |            130 |
+| Logitech MX Master 3 Wireless Mouse                    | H1        |      21797.82 |            218 |
+| Logitech MX Master 3 Wireless Mouse                    | H2        |      13098.69 |            131 |
+| MacBook Air M2                                         | H1        |     212398.23 |            177 |
+| MacBook Air M2                                         | H2        |     172798.56 |            144 |
+| MacBook Pro M2                                         | H1        |     381998.09 |            191 |
+| MacBook Pro M2                                         | H2        |     257998.71 |            129 |
+| Microsoft Surface Laptop 4                             | H1        |     244398.12 |            188 |
+| Microsoft Surface Laptop 4                             | H2        |     163798.74 |            126 |
+| Microsoft Surface Pro 7                                | H1        |     187197.66 |            234 |
+| Microsoft Surface Pro 7                                | H2        |     115998.55 |            145 |
+| MSI GS66 Stealth Gaming Laptop                         | H1        |     459997.70 |            230 |
+| MSI GS66 Stealth Gaming Laptop                         | H2        |     271998.64 |            136 |
+| MSI Optix MAG271CQR Curved Gaming Monitor              | H1        |      83597.91 |            209 |
+| MSI Optix MAG271CQR Curved Gaming Monitor              | H2        |      50798.73 |            127 |
+| MSI Optix MAG321CQR Curved Gaming Monitor              | H1        |      98998.02 |            198 |
+| MSI Optix MAG321CQR Curved Gaming Monitor              | H2        |      58998.82 |            118 |
+| Nikon D850 DSLR Camera                                 | H1        |     560998.13 |            187 |
+| Nikon D850 DSLR Camera                                 | H2        |     371998.76 |            124 |
+| Nikon Z6 Mirrorless Camera                             | H1        |     337998.31 |            169 |
+| Nikon Z6 Mirrorless Camera                             | H2        |     279998.60 |            140 |
+| NVIDIA GeForce RTX 3080 Graphics Card                  | H1        |     153997.80 |            220 |
+| NVIDIA GeForce RTX 3080 Graphics Card                  | H2        |      93098.67 |            133 |
+| OnePlus 9 Pro                                          | H1        |     210597.66 |            234 |
+| OnePlus 9 Pro                                          | H2        |     139498.45 |            155 |
+| OnePlus Buds Pro                                       | H1        |      29398.04 |            196 |
+| OnePlus Buds Pro                                       | H2        |      19198.72 |            128 |
+| OnePlus Nord 2                                         | H1        |     101497.97 |            203 |
+| OnePlus Nord 2                                         | H2        |      71498.57 |            143 |
+| Razer Blade 15 Gaming Laptop                           | H1        |     413997.70 |            230 |
+| Razer Blade 15 Gaming Laptop                           | H2        |     233998.70 |            130 |
+| Razer Naga X Gaming Mouse                              | H1        |      16237.97 |            203 |
+| Razer Naga X Gaming Mouse                              | H2        |      11278.59 |            141 |
+| Red Tomatoes                                           | H1        |     397097.91 |            209 |
+| Red Tomatoes                                           | H2        |     286898.49 |            151 |
+| Ring Video Doorbell Pro 2                              | H1        |      48748.05 |            195 |
+| Ring Video Doorbell Pro 2                              | H2        |      31248.75 |            125 |
+| ROCCAT Vulcan Pro Mechanical Gaming Keyboard           | H1        |      38798.06 |            194 |
+| ROCCAT Vulcan Pro Mechanical Gaming Keyboard           | H2        |      26198.69 |            131 |
+| Roku Ultra 4K Streaming Player                         | H1        |      18698.13 |            187 |
+| Roku Ultra 4K Streaming Player                         | H2        |      12098.79 |            121 |
+| Samsung Galaxy Buds Pro                                | H1        |      45997.70 |            230 |
+| Samsung Galaxy Buds Pro                                | H2        |      24398.78 |            122 |
+| Samsung Galaxy Tab S7                                  | H1        |     138447.87 |            213 |
+| Samsung Galaxy Tab S7                                  | H2        |      88398.64 |            136 |
+| Samsung Galaxy Watch 4 Classic                         | H1        |      72097.94 |            206 |
+| Samsung Galaxy Watch 4 Classic                         | H2        |      44098.74 |            126 |
+| Samsung Odyssey G7 Gaming Monitor                      | H1        |     139998.00 |            200 |
+| Samsung Odyssey G7 Gaming Monitor                      | H2        |      91698.69 |            131 |
+| Samsung QLED 4K Smart TV                               | H1        |     308997.94 |            206 |
+| Samsung QLED 4K Smart TV                               | H2        |     197998.68 |            132 |
+| Sennheiser HD 660 S Open-Back Headphones               | H1        |     112997.74 |            226 |
+| Sennheiser HD 660 S Open-Back Headphones               | H2        |      72498.55 |            145 |
+| Sonos Roam Portable Bluetooth Speaker                  | H1        |      38247.75 |            225 |
+| Sonos Roam Portable Bluetooth Speaker                  | H2        |      22608.67 |            133 |
+| Sony A7 III Mirrorless Camera                          | H1        |     353998.23 |            177 |
+| Sony A7 III Mirrorless Camera                          | H2        |     263998.68 |            132 |
+| Sony Alpha 7C Mirrorless Camera                        | H1        |     422997.65 |            235 |
+| Sony Alpha 7C Mirrorless Camera                        | H2        |     257398.57 |            143 |
+| Sony WH-1000XM4 Headphones                             | H1        |      73847.89 |            211 |
+| Sony WH-1000XM4 Headphones                             | H2        |      60898.26 |            174 |
+| Sony Xperia 1 III                                      | H1        |     297697.71 |            229 |
+| Sony Xperia 1 III                                      | H2        |     148198.86 |            114 |
+| SteelSeries Arctis Pro Wireless Gaming Headset         | H1        |      73917.76 |            224 |
+| SteelSeries Arctis Pro Wireless Gaming Headset         | H2        |      44878.64 |            136 |
+| UE Megaboom 3 Portable Bluetooth Speaker               | H1        |      42397.88 |            212 |
+| UE Megaboom 3 Portable Bluetooth Speaker               | H2        |      26398.68 |            132 |
+| Xbox Series X                                          | H1        |      99998.00 |            200 |
+| Xbox Series X                                          | H2        |      59498.81 |            119 |
++--------------------------------------------------------+-----------+---------------+----------------+
+202 rows in set (0.13 sec)
+
+Q9. 
+mysql> SELECT 
+         product_name,
+         order_date,
+         daily_sales,
+         threshold
+     FROM (
+         SELECT 
+             p.product_name,
+             sf.order_date,
+             SUM(sf.total_sale) AS daily_sales,
+             AVG(SUM(sf.total_sale)) OVER (PARTITION BY p.product_name) * 2 AS threshold
+         FROM 
+             sales_fact sf
+         JOIN 
+             products p ON sf.product_id = p.product_id
+         GROUP BY 
+             p.product_name, sf.order_date
+     ) AS derived_table
+     WHERE 
+         daily_sales > threshold
+     ORDER BY 
+         product_name, order_date;
++--------------------------------------------------------+------------+-------------+--------------+
+| product_name                                           | order_date | daily_sales | threshold    |
++--------------------------------------------------------+------------+-------------+--------------+
+| Acer Aspire 5 Laptop                                   | 2019-04-25 |     7699.86 |  6149.068524 |
+| Acer Aspire 5 Laptop                                   | 2019-08-29 |     6599.88 |  6149.068524 |
+| Acer Predator Helios 300 Gaming Laptop                 | 2019-04-05 |    13199.89 | 12154.737420 |
+| Acer Predator Helios 300 Gaming Laptop                 | 2019-04-11 |    13199.89 | 12154.737420 |
+| Acer Predator X34 Curved Gaming Monitor                | 2019-04-05 |    10999.89 | 10885.137050 |
+| Acer Predator X34 Curved Gaming Monitor                | 2019-04-06 |    10999.89 | 10885.137050 |
+| Acer Predator X34 Curved Gaming Monitor                | 2019-04-16 |    10999.89 | 10885.137050 |
+| Acer Predator X34 Curved Gaming Monitor                | 2019-04-27 |    11999.88 | 10885.137050 |
+| Acer Predator XB271HU Gaming Monitor                   | 2019-04-03 |     7199.88 |  6393.336066 |
+| Acer Predator XB271HU Gaming Monitor                   | 2019-04-21 |     8399.86 |  6393.336066 |
+| Acer Predator XB271HU Gaming Monitor                   | 2019-04-29 |     8999.85 |  6393.336066 |
+| AirPods Pro                                            | 2019-04-04 |     3499.86 |  2786.773770 |
+| Alienware Aurora Gaming PC                             | 2019-08-30 |    25199.86 | 18406.349354 |
+| Alienware AW2521HFL Gaming Monitor                     | 2019-04-01 |     5999.88 |  5564.404838 |
+| Anker Soundcore Flare+ Portable Speaker                | 2019-04-06 |     1299.87 |  1212.781936 |
+| Anker Soundcore Flare+ Portable Speaker                | 2019-04-17 |     1399.86 |  1212.781936 |
+| Anker Soundcore Liberty Air 2 Pro Earbuds              | 2019-04-21 |     1819.86 |  1444.806886 |
+| Anker Soundcore Liberty Air 2 Pro Earbuds              | 2019-04-24 |     1559.88 |  1444.806886 |
+| AOC CQ32G1 Curved Gaming Monitor                       | 2019-04-06 |     4899.86 |  4304.877000 |
+| AOC CQ32G1 Curved Gaming Monitor                       | 2019-04-23 |     4549.87 |  4304.877000 |
+| Apple AirPods (3rd generation)                         | 2019-04-09 |     2339.87 |  1974.083870 |
+| Apple AirPods (3rd generation)                         | 2019-04-17 |     1979.89 |  1974.083870 |
+| Apple AirPods (3rd generation)                         | 2019-04-24 |     1979.89 |  1974.083870 |
+| Apple AirPods (3rd generation)                         | 2019-08-13 |     2339.87 |  1974.083870 |
+| Apple AirPods Max                                      | 2019-04-10 |     7149.87 |  5748.282580 |
+| Apple AirPods Max                                      | 2019-04-29 |     8249.85 |  5748.282580 |
+| Apple HomePod Mini                                     | 2019-04-09 |     1199.88 |  1121.199344 |
+| Apple HomePod Mini                                     | 2019-04-21 |     1499.85 |  1121.199344 |
+| Apple HomePod Mini                                     | 2019-04-27 |     1399.86 |  1121.199344 |
+| Apple iPad Pro (12.9-inch)                             | 2019-04-17 |    12099.89 | 11484.641356 |
+| Apple Watch SE                                         | 2019-08-08 |     4759.83 |  3182.553000 |
+| Apple Watch SE                                         | 2019-08-13 |     3359.88 |  3182.553000 |
+| Apple Watch Series 7                                   | 2019-04-15 |     4399.89 |  4133.230000 |
+| Apple Watch Series 7                                   | 2019-04-18 |     4799.88 |  4133.230000 |
+| Apple Watch Series 7                                   | 2019-04-26 |     4399.89 |  4133.230000 |
+| Apple Watch Series 7                                   | 2019-08-16 |     5199.87 |  4133.230000 |
+| Apple Watch Series 7                                   | 2019-08-26 |     4799.88 |  4133.230000 |
+| ASUS ROG Swift PG279Q Gaming Monitor                   | 2019-04-11 |     8399.88 |  7632.149032 |
+| ASUS ROG Swift PG279Q Gaming Monitor                   | 2019-04-27 |     7699.89 |  7632.149032 |
+| ASUS ROG Swift PG279Q Gaming Monitor                   | 2019-08-02 |     9799.86 |  7632.149032 |
+| ASUS TUF Gaming VG279QM Monitor                        | 2019-04-04 |     3849.89 |  3545.800328 |
+| ASUS TUF Gaming VG279QM Monitor                        | 2019-04-28 |     3849.89 |  3545.800328 |
+| Beats Powerbeats Pro Wireless Earphones                | 2019-04-29 |     3249.87 |  3033.212000 |
+| Beats Powerbeats Pro Wireless Earphones                | 2019-08-31 |     3499.86 |  3033.212000 |
+| Bose QuietComfort 35 II Wireless Headphones            | 2019-04-18 |     3899.87 |  3875.280656 |
+| Bose SoundLink Revolve+ Bluetooth Speaker              | 2019-04-05 |     3599.88 |  3255.629180 |
+| Bose SoundLink Revolve+ Bluetooth Speaker              | 2019-04-08 |     3299.89 |  3255.629180 |
+| Bose SoundLink Revolve+ Bluetooth Speaker              | 2019-04-17 |     3299.89 |  3255.629180 |
+| Bose SoundLink Revolve+ Bluetooth Speaker              | 2019-04-26 |     3899.87 |  3255.629180 |
+| Canon EOS 90D DSLR Camera                              | 2019-04-03 |    13199.89 | 11055.645574 |
+| Canon EOS 90D DSLR Camera                              | 2019-04-16 |    11999.90 | 11055.645574 |
+| Canon EOS M50 Mark II Mirrorless Camera                | 2019-04-07 |     7799.88 |  6764.302712 |
+| Canon EOS M50 Mark II Mirrorless Camera                | 2019-04-11 |     9099.86 |  6764.302712 |
+| Canon EOS M50 Mark II Mirrorless Camera                | 2019-04-14 |     7149.89 |  6764.302712 |
+| Canon EOS R5 Mirrorless Camera                         | 2019-04-13 |    48999.86 | 43689.530344 |
+| Canon EOS RP Mirrorless Camera                         | 2019-04-13 |    14299.89 | 13553.994098 |
+| Canon EOS RP Mirrorless Camera                         | 2019-04-21 |    15599.88 | 13553.994098 |
+| Canon EOS RP Mirrorless Camera                         | 2019-04-24 |    14299.89 | 13553.994098 |
+| Canon EOS-1D X Mark III DSLR Camera                    | 2019-04-12 |    84499.87 | 76508.079016 |
+| Canon EOS-1D X Mark III DSLR Camera                    | 2019-04-19 |    90999.86 | 76508.079016 |
+| Canon EOS-1D X Mark III DSLR Camera                    | 2019-04-23 |    97499.85 | 76508.079016 |
+| Canon EOS-1D X Mark III DSLR Camera                    | 2019-04-24 |    77999.88 | 76508.079016 |
+| Corsair K95 RGB Platinum XT Mechanical Gaming Keyboard | 2019-04-13 |     2999.85 |  2242.510820 |
+| Corsair K95 RGB Platinum XT Mechanical Gaming Keyboard | 2019-04-28 |     2999.85 |  2242.510820 |
+| Corsair K95 RGB Platinum XT Mechanical Gaming Keyboard | 2019-04-30 |     2599.87 |  2242.510820 |
+| Corsair Virtuoso RGB Wireless Gaming Headset           | 2019-04-03 |     2159.88 |  2099.883334 |
+| Corsair Virtuoso RGB Wireless Gaming Headset           | 2019-04-08 |     2159.88 |  2099.883334 |
+| Corsair Virtuoso RGB Wireless Gaming Headset           | 2019-04-12 |     2159.88 |  2099.883334 |
+| Corsair Virtuoso RGB Wireless Gaming Headset           | 2019-04-15 |     2879.84 |  2099.883334 |
+| Corsair Virtuoso RGB Wireless Gaming Headset           | 2019-08-06 |     2159.88 |  2099.883334 |
+| Dell Alienware AW3420DW Curved Gaming Monitor          | 2019-04-02 |    15599.87 | 14045.784590 |
+| Dell Alienware AW3420DW Curved Gaming Monitor          | 2019-04-03 |    14399.88 | 14045.784590 |
+| Dell Alienware AW3420DW Curved Gaming Monitor          | 2019-04-25 |    14399.88 | 14045.784590 |
+| Dell Alienware AW3420DW Curved Gaming Monitor          | 2019-08-03 |    16799.86 | 14045.784590 |
+| Dell G5 Gaming Desktop                                 | 2019-04-18 |    19499.85 | 12957.277378 |
+| Dell Inspiron 14 Laptop                                | 2019-04-08 |     7999.90 |  7896.675484 |
+| Dell Inspiron 14 Laptop                                | 2019-04-09 |     9599.88 |  7896.675484 |
+| Dell Inspiron 14 Laptop                                | 2019-04-13 |    10399.87 |  7896.675484 |
+| Dell XPS 13 Laptop                                     | 2019-04-20 |    18199.86 | 13127.767868 |
+| Dell XPS 13 Laptop                                     | 2019-04-23 |    15599.88 | 13127.767868 |
+| Dell XPS 13 Laptop                                     | 2019-04-26 |    20799.84 | 13127.767868 |
+| Dell XPS 13 Laptop                                     | 2019-04-29 |    14299.89 | 13127.767868 |
+| DJI Mavic Air 2 Drone                                  | 2019-04-06 |    10399.87 | 10038.584194 |
+| DJI Mavic Air 2 Drone                                  | 2019-04-23 |    12799.84 | 10038.584194 |
+| DJI Osmo Pocket 2                                      | 2019-04-09 |     4199.88 |  3890.052786 |
+| DJI Osmo Pocket 2                                      | 2019-04-11 |     4549.87 |  3890.052786 |
+| DJI Osmo Pocket 2                                      | 2019-04-18 |     4199.88 |  3890.052786 |
+| DJI Osmo Pocket 2                                      | 2019-04-22 |     4199.88 |  3890.052786 |
+| Fitbit Charge 5                                        | 2019-04-17 |     2159.88 |  1841.209180 |
+| Fitbit Charge 5                                        | 2019-04-18 |     2159.88 |  1841.209180 |
+| Fitbit Versa 3 Smartwatch                              | 2019-04-02 |     2759.88 |  2744.798688 |
+| Fitbit Versa 3 Smartwatch                              | 2019-04-10 |     2989.87 |  2744.798688 |
+| Fitbit Versa 3 Smartwatch                              | 2019-04-12 |     3219.86 |  2744.798688 |
+| Fitbit Versa 3 Smartwatch                              | 2019-04-14 |     2759.88 |  2744.798688 |
+| Fitbit Versa 3 Smartwatch                              | 2019-04-22 |     3449.85 |  2744.798688 |
+| Fitbit Versa 3 Smartwatch                              | 2019-08-04 |     2989.87 |  2744.798688 |
+| Fitbit Versa 3 Smartwatch                              | 2019-08-13 |     2989.87 |  2744.798688 |
+| Fujifilm X-T4 Mirrorless Camera                        | 2019-04-18 |    17999.88 | 16899.887334 |
+| Fujifilm X-T4 Mirrorless Camera                        | 2019-04-30 |    19499.87 | 16899.887334 |
+| Fujifilm X100V Compact Camera                          | 2019-04-12 |    15399.89 | 13766.568334 |
+| Fujifilm X100V Compact Camera                          | 2019-04-20 |    13999.90 | 13766.568334 |
+| Fujifilm X100V Compact Camera                          | 2019-04-29 |    16799.88 | 13766.568334 |
+| Garmin Forerunner 945 GPS Smartwatch                   | 2019-04-05 |     6599.89 |  6559.890666 |
+| Garmin Forerunner 945 GPS Smartwatch                   | 2019-04-08 |     7199.88 |  6559.890666 |
+| Garmin Forerunner 945 GPS Smartwatch                   | 2019-04-18 |     7199.88 |  6559.890666 |
+| Garmin Forerunner 945 GPS Smartwatch                   | 2019-04-20 |     7199.88 |  6559.890666 |
+| Garmin Forerunner 945 GPS Smartwatch                   | 2019-04-25 |     6599.89 |  6559.890666 |
+| Garmin Instinct Solar Smartwatch                       | 2019-04-10 |     4799.88 |  4573.219000 |
+| Garmin Instinct Solar Smartwatch                       | 2019-04-17 |     6399.84 |  4573.219000 |
+| Garmin Venu 2 Smartwatch                               | 2019-04-10 |     5199.87 |  4119.897000 |
+| Garmin Venu 2 Smartwatch                               | 2019-04-24 |     4399.89 |  4119.897000 |
+| Garmin Venu 2 Smartwatch                               | 2019-04-26 |     5599.86 |  4119.897000 |
+| Google Nest Audio Smart Speaker                        | 2019-04-07 |     1299.87 |  1074.086130 |
+| Google Nest Audio Smart Speaker                        | 2019-04-30 |     1299.87 |  1074.086130 |
+| Google Nest Hub (2nd Gen)                              | 2019-04-04 |     1199.88 |  1167.096394 |
+| Google Nest Hub (2nd Gen)                              | 2019-04-19 |     1199.88 |  1167.096394 |
+| Google Nest Hub (2nd Gen)                              | 2019-04-28 |     1599.84 |  1167.096394 |
+| Google Nest Hub (2nd Gen)                              | 2019-04-29 |     1199.88 |  1167.096394 |
+| Google Pixel 6                                         | 2019-04-16 |     7699.89 |  7642.513770 |
+| Google Pixel 6                                         | 2019-04-21 |     9799.86 |  7642.513770 |
+| Google Pixel 6                                         | 2019-08-11 |     7699.89 |  7642.513770 |
+| Google Pixel 6                                         | 2019-08-31 |     8399.88 |  7642.513770 |
+| Google Pixel Buds A-Series                             | 2019-04-21 |     1099.89 |  1065.467214 |
+| Google Pixel Buds A-Series                             | 2019-04-27 |     1099.89 |  1065.467214 |
+| Google Pixel Buds A-Series                             | 2019-08-29 |     1099.89 |  1065.467214 |
+| GoPro HERO10 Black Action Camera                       | 2019-04-10 |     6499.87 |  5451.503870 |
+| GoPro HERO10 Black Action Camera                       | 2019-04-17 |     6999.86 |  5451.503870 |
+| GoPro HERO10 Black Action Camera                       | 2019-04-23 |     6999.86 |  5451.503870 |
+| GoPro HERO10 Black Action Camera                       | 2019-04-24 |     5499.89 |  5451.503870 |
+| GoPro HERO10 Black Action Camera                       | 2019-04-27 |     5999.88 |  5451.503870 |
+| GoPro HERO9 Black Action Camera                        | 2019-04-07 |     5849.87 |  5119.558360 |
+| GoPro HERO9 Black Action Camera                        | 2019-04-09 |     5849.87 |  5119.558360 |
+| GoPro HERO9 Black Action Camera                        | 2019-04-10 |     6299.86 |  5119.558360 |
+| GoPro HERO9 Black Action Camera                        | 2019-04-17 |     5399.88 |  5119.558360 |
+| GoPro HERO9 Black Action Camera                        | 2019-04-20 |     5849.87 |  5119.558360 |
+| GoPro HERO9 Black Action Camera                        | 2019-04-22 |     5849.87 |  5119.558360 |
+| HP Omen 15 Gaming Laptop                               | 2019-04-08 |    15599.88 | 14363.823934 |
+| HP Pavilion 27xw Monitor                               | 2019-04-03 |     2749.89 |  2713.006230 |
+| HP Pavilion 27xw Monitor                               | 2019-04-26 |     3249.87 |  2713.006230 |
+| HP Spectre x360 Laptop                                 | 2019-04-10 |    16799.88 | 15239.235410 |
+| HP Spectre x360 Laptop                                 | 2019-04-22 |    16799.88 | 15239.235410 |
+| HP Spectre x360 Laptop                                 | 2019-04-24 |    18199.87 | 15239.235410 |
+| HP Spectre x360 Laptop                                 | 2019-08-01 |    18199.87 | 15239.235410 |
+| HyperX Alloy FPS Pro Mechanical Gaming Keyboard        | 2019-04-17 |      909.87 |   759.213560 |
+| iPad Air                                               | 2019-04-29 |     7799.87 |  6919.884666 |
+| iPhone 13 Pro                                          | 2019-04-18 |    12099.89 | 11396.617704 |
+| iPhone 13 Pro                                          | 2019-04-29 |    14299.87 | 11396.617704 |
+| iPhone 13 Pro                                          | 2019-08-27 |    13199.88 | 11396.617704 |
+| Jabra Elite 75t True Wireless Earbuds                  | 2019-04-03 |     1499.90 |  1485.146886 |
+| Jabra Elite 75t True Wireless Earbuds                  | 2019-04-06 |     1499.90 |  1485.146886 |
+| Jabra Elite 75t True Wireless Earbuds                  | 2019-04-10 |     1649.89 |  1485.146886 |
+| Jabra Elite 75t True Wireless Earbuds                  | 2019-08-28 |     1499.90 |  1485.146886 |
+| Jabra Elite 85t True Wireless Earbuds                  | 2019-04-02 |     3449.85 |  2480.875738 |
+| Jabra Elite 85t True Wireless Earbuds                  | 2019-04-27 |     2989.87 |  2480.875738 |
+| Jabra Elite 85t True Wireless Earbuds                  | 2019-08-19 |     2529.89 |  2480.875738 |
+| JBL Charge 4 Portable Bluetooth Speaker                | 2019-04-18 |     1649.89 |  1539.241640 |
+| JBL Flip 5 Portable Bluetooth Speaker                  | 2019-04-18 |     1299.87 |  1072.023934 |
+| JBL Flip 5 Portable Bluetooth Speaker                  | 2019-04-21 |     1299.87 |  1072.023934 |
+| JBL Flip 5 Portable Bluetooth Speaker                  | 2019-04-25 |     1099.89 |  1072.023934 |
+| Lenovo Legion 5 Gaming Laptop                          | 2019-04-02 |    14999.85 | 11633.217000 |
+| Lenovo Legion 5 Gaming Laptop                          | 2019-04-05 |    11999.88 | 11633.217000 |
+| Lenovo Legion 5 Gaming Laptop                          | 2019-04-20 |    11999.88 | 11633.217000 |
+| Lenovo Yoga C930 2-in-1 Laptop                         | 2019-04-23 |    15599.87 | 13382.939322 |
+| Lenovo Yoga C930 2-in-1 Laptop                         | 2019-04-30 |    15599.87 | 13382.939322 |
+| LG C1 OLED 4K TV                                       | 2019-04-04 |    44799.84 | 30845.791476 |
+| LG C1 OLED 4K TV                                       | 2019-04-12 |    33599.88 | 30845.791476 |
+| LG OLED C1 4K TV                                       | 2019-04-02 |    37499.85 | 27249.891000 |
+| LG OLED C1 4K TV                                       | 2019-04-24 |    37499.85 | 27249.891000 |
+| LG OLED C1 4K TV                                       | 2019-04-25 |    27499.89 | 27249.891000 |
+| LG OLED C1 4K TV                                       | 2019-08-09 |    27499.89 | 27249.891000 |
+| LG UltraGear 27GN950-B Gaming Monitor                  | 2019-04-18 |    17999.88 | 16118.536610 |
+| LG UltraGear 27GN950-B Gaming Monitor                  | 2019-08-24 |    17999.88 | 16118.536610 |
+| Logitech G Pro X Mechanical Gaming Keyboard            | 2019-04-13 |     2099.86 |  1755.620656 |
+| Logitech G Pro X Mechanical Gaming Keyboard            | 2019-04-19 |     1949.87 |  1755.620656 |
+| Logitech G Pro X Mechanical Gaming Keyboard            | 2019-04-21 |     1949.87 |  1755.620656 |
+| Logitech G502 HERO Gaming Mouse                        | 2019-04-13 |     1119.86 |   885.050646 |
+| Logitech G502 HERO Gaming Mouse                        | 2019-04-28 |     1039.87 |   885.050646 |
+| Logitech MX Master 3 Wireless Mouse                    | 2019-04-16 |     2099.79 |  1125.693870 |
+| Logitech MX Master 3 Wireless Mouse                    | 2019-04-23 |     2099.79 |  1125.693870 |
+| Logitech MX Master 3 Wireless Mouse                    | 2019-04-29 |     1199.88 |  1125.693870 |
+| MacBook Air M2                                         | 2019-04-05 |    15599.87 | 12839.893000 |
+| MacBook Pro M2                                         | 2019-04-04 |    23999.88 | 21333.226666 |
+| MacBook Pro M2                                         | 2019-04-12 |    23999.88 | 21333.226666 |
+| MacBook Pro M2                                         | 2019-04-15 |    21999.89 | 21333.226666 |
+| MacBook Pro M2                                         | 2019-08-05 |    21999.89 | 21333.226666 |
+| MacBook Pro M2                                         | 2019-08-16 |    21999.89 | 21333.226666 |
+| MacBook Pro M2                                         | 2019-08-19 |    21999.89 | 21333.226666 |
+| Microsoft Surface Laptop 4                             | 2019-04-01 |    14299.89 | 13383.503606 |
+| Microsoft Surface Laptop 4                             | 2019-04-20 |    14299.89 | 13383.503606 |
+| Microsoft Surface Pro 7                                | 2019-04-17 |    10399.87 |  9940.859344 |
+| Microsoft Surface Pro 7                                | 2019-04-19 |    10399.87 |  9940.859344 |
+| Microsoft Surface Pro 7                                | 2019-04-21 |    11199.86 |  9940.859344 |
+| MSI GS66 Stealth Gaming Laptop                         | 2019-04-03 |    27999.86 | 23999.880000 |
+| MSI GS66 Stealth Gaming Laptop                         | 2019-04-13 |    25999.87 | 23999.880000 |
+| MSI Optix MAG271CQR Curved Gaming Monitor              | 2019-04-12 |     5599.86 |  4406.447214 |
+| MSI Optix MAG271CQR Curved Gaming Monitor              | 2019-04-28 |     4799.88 |  4406.447214 |
+| MSI Optix MAG321CQR Curved Gaming Monitor              | 2019-04-23 |     5499.89 |  5266.561334 |
+| MSI Optix MAG321CQR Curved Gaming Monitor              | 2019-04-30 |     5999.88 |  5266.561334 |
+| Nikon D850 DSLR Camera                                 | 2019-04-01 |    32999.89 | 30590.061968 |
+| Nikon D850 DSLR Camera                                 | 2019-04-06 |    32999.89 | 30590.061968 |
+| Nikon D850 DSLR Camera                                 | 2019-04-12 |    44999.85 | 30590.061968 |
+| Nikon Z6 Mirrorless Camera                             | 2019-04-10 |    25999.87 | 20262.193770 |
+| Nikon Z6 Mirrorless Camera                             | 2019-04-14 |    25999.87 | 20262.193770 |
+| NVIDIA GeForce RTX 3080 Graphics Card                  | 2019-04-11 |     9099.87 |  7970.853870 |
+| OnePlus 9 Pro                                          | 2019-04-14 |    12599.86 | 11669.870334 |
+| OnePlus 9 Pro                                          | 2019-04-18 |    11699.87 | 11669.870334 |
+| OnePlus 9 Pro                                          | 2019-04-27 |    11699.87 | 11669.870334 |
+| OnePlus 9 Pro                                          | 2019-04-29 |    15299.83 | 11669.870334 |
+| OnePlus Buds Pro                                       | 2019-04-10 |     1649.89 |  1593.336394 |
+| OnePlus Buds Pro                                       | 2019-04-17 |     2249.85 |  1593.336394 |
+| OnePlus Buds Pro                                       | 2019-08-22 |     1649.89 |  1593.336394 |
+| OnePlus Nord 2                                         | 2019-04-27 |     5999.88 |  5672.017704 |
+| Razer Blade 15 Gaming Laptop                           | 2019-04-14 |    23399.87 | 21245.783606 |
+| Razer Blade 15 Gaming Laptop                           | 2019-04-24 |    32399.82 | 21245.783606 |
+| Razer Naga X Gaming Mouse                              | 2019-04-14 |     1279.84 |   902.182296 |
+| Razer Naga X Gaming Mouse                              | 2019-04-18 |     1199.85 |   902.182296 |
+| Razer Naga X Gaming Mouse                              | 2019-04-20 |     1199.85 |   902.182296 |
+| Red Tomatoes                                           | 2019-04-21 |    24699.87 | 22799.880000 |
+| Ring Video Doorbell Pro 2                              | 2019-04-06 |     3499.86 |  2666.560000 |
+| ROCCAT Vulcan Pro Mechanical Gaming Keyboard           | 2019-04-18 |     2199.89 |  2166.558334 |
+| ROCCAT Vulcan Pro Mechanical Gaming Keyboard           | 2019-04-21 |     2199.89 |  2166.558334 |
+| ROCCAT Vulcan Pro Mechanical Gaming Keyboard           | 2019-04-26 |     2399.88 |  2166.558334 |
+| Roku Ultra 4K Streaming Player                         | 2019-04-30 |     1199.88 |  1026.564000 |
+| Samsung Galaxy Buds Pro                                | 2019-04-21 |     2999.85 |  2308.081312 |
+| Samsung Galaxy Buds Pro                                | 2019-04-25 |     2399.88 |  2308.081312 |
+| Samsung Galaxy Tab S7                                  | 2019-04-15 |     8449.87 |  7561.550334 |
+| Samsung Galaxy Watch 4 Classic                         | 2019-04-11 |     4199.88 |  3938.870508 |
+| Samsung Galaxy Watch 4 Classic                         | 2019-04-17 |     4899.86 |  3938.870508 |
+| Samsung Galaxy Watch 4 Classic                         | 2019-04-20 |     4549.87 |  3938.870508 |
+| Samsung Odyssey G7 Gaming Monitor                      | 2019-04-04 |     9099.87 |  7723.223000 |
+| Samsung Odyssey G7 Gaming Monitor                      | 2019-04-06 |     9099.87 |  7723.223000 |
+| Samsung QLED 4K Smart TV                               | 2019-04-13 |    19499.87 | 16622.840000 |
+| Samsung QLED 4K Smart TV                               | 2019-04-16 |    17999.88 | 16622.840000 |
+| Sennheiser HD 660 S Open-Back Headphones               | 2019-04-08 |     6999.86 |  6183.209666 |
+| Sennheiser HD 660 S Open-Back Headphones               | 2019-04-23 |     6499.87 |  6183.209666 |
+| Sonos Roam Portable Bluetooth Speaker                  | 2019-04-04 |     2039.88 |  1995.292460 |
+| Sonos Roam Portable Bluetooth Speaker                  | 2019-04-09 |     3569.79 |  1995.292460 |
+| Sony A7 III Mirrorless Camera                          | 2019-04-20 |    19999.90 | 19935.384194 |
+| Sony A7 III Mirrorless Camera                          | 2019-08-13 |    19999.90 | 19935.384194 |
+| Sony Alpha 7C Mirrorless Camera                        | 2019-04-07 |    23399.87 | 22308.072786 |
+| Sony Alpha 7C Mirrorless Camera                        | 2019-04-14 |    28799.84 | 22308.072786 |
+| Sony Alpha 7C Mirrorless Camera                        | 2019-04-17 |    23399.87 | 22308.072786 |
+| Sony Alpha 7C Mirrorless Camera                        | 2019-04-24 |    23399.87 | 22308.072786 |
+| Sony WH-1000XM4 Headphones                             | 2019-04-11 |     4549.87 |  4417.906558 |
+| Sony Xperia 1 III                                      | 2019-04-08 |    19499.85 | 14863.219000 |
+| Sony Xperia 1 III                                      | 2019-04-25 |    19499.85 | 14863.219000 |
+| Sony Xperia 1 III                                      | 2019-04-26 |    16899.87 | 14863.219000 |
+| SteelSeries Arctis Pro Wireless Gaming Headset         | 2019-04-14 |     3959.88 |  3894.963934 |
+| SteelSeries Arctis Pro Wireless Gaming Headset         | 2019-04-19 |     3959.88 |  3894.963934 |
+| SteelSeries Arctis Pro Wireless Gaming Headset         | 2019-04-24 |     4289.87 |  3894.963934 |
+| UE Megaboom 3 Portable Bluetooth Speaker               | 2019-08-28 |     2799.86 |  2293.218666 |
+| Xbox Series X                                          | 2019-04-13 |     8499.83 |  5406.671526 |
+| Xbox Series X                                          | 2019-04-25 |     6499.87 |  5406.671526 |
++--------------------------------------------------------+------------+-------------+--------------+
+253 rows in set (0.11 sec)
+
+
+Q10.
+
+mysql> CREATE OR REPLACE VIEW STORE_QUARTERLY_SALES AS
+     SELECT 
+         p.store_name,
+         QUARTER(sf.order_date) AS quarter,
+         SUM(sf.total_sale) AS quarterly_sales
+     FROM 
+         sales_fact sf
+     JOIN 
+         products p ON sf.product_id = p.product_id
+     GROUP BY 
+         p.store_name, QUARTER(sf.order_date)
+     ORDER BY 
+         p.store_name, quarter;
+Query OK, 0 rows affected (0.02 sec)
+
+mysql> SELECT * FROM STORE_QUARTERLY_SALES;
++--------------+---------+-----------------+
+| store_name   | quarter | quarterly_sales |
++--------------+---------+-----------------+
+| Electro Mart |       2 |      2444675.49 |
+| Electro Mart |       3 |      1604433.88 |
+| Game Zone    |       2 |      1954137.25 |
+| Game Zone    |       3 |      1287701.91 |
+| Health Zone  |       2 |       566624.03 |
+| Health Zone  |       3 |       366509.58 |
+| InnoTech     |       2 |      2275783.62 |
+| InnoTech     |       3 |      1480989.38 |
+| Pakistan     |       2 |       397097.91 |
+| Pakistan     |       3 |       286898.49 |
+| Photo World  |       2 |      5551869.55 |
+| Photo World  |       3 |      3523130.65 |
+| Sound Zone   |       2 |       954326.66 |
+| Sound Zone   |       3 |       629701.21 |
+| Tech Haven   |       2 |      3010019.80 |
+| Tech Haven   |       3 |      1953880.48 |
++--------------+---------+-----------------+
+16 rows in set (0.09 sec)
+
